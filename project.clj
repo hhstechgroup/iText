@@ -1,5 +1,5 @@
 (defproject itext-min 
-  "0.1-SNAPSHOT"
+  "0.2"
   :description "iText, a free Java-PDF library"
   :url "https://github.com/yogthos/clj-pdf"
   :license {:name "LGPL 3.0"
