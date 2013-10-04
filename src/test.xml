@@ -86,7 +86,7 @@
                 <include name="**/*.xfdf"/>
                 <include name="**/*.xml"/>
             </fileset>
-            <fileset dir="${itext.src.test}">
+            <fileset dir="test">
                 <include name="**/*.pdf"/>
                 <include name="**/*.xfdf"/>
             </fileset>
@@ -102,7 +102,7 @@
             <sysproperty key="java.awt.headless" value="true"/>
             <classpath refid="itext.test.classpath" />
             <batchtest fork="yes" todir="${itext.reports}/xml">
-                <fileset dir="${itext.src.test}/core">
+                <fileset dir="test/java/core">
                     <include name="**/*.java" />
                 </fileset>
             </batchtest>
@@ -124,7 +124,7 @@
         <junit printsummary="yes" showoutput="no" filtertrace="no" haltonfailure="yes" dir="${itext.bin.data}">
             <classpath refid="itext.test.classpath" />
             <batchtest fork="yes" todir="${itext.reports}/xml">
-                <fileset dir="${itext.src.test}/swing">
+                <fileset dir="test/java/swing">
                     <include name="**/*.java" />
                 </fileset>
             </batchtest>
@@ -161,7 +161,7 @@
                 <pathelement location="${itext.rtf.jar}"/>
             </classpath>
             <batchtest fork="yes" todir="${itext.reports}/xml">
-                <fileset dir="${itext.src.test}/rtf">
+                <fileset dir="test/java/rtf">
                     <include name="**/*.java" />
                 </fileset>
             </batchtest>
