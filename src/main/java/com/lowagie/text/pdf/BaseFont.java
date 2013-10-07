@@ -51,6 +51,7 @@ package com.lowagie.text.pdf;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -65,6 +66,8 @@ import com.lowagie.text.DocumentException;
  */
 
 public abstract class BaseFont {
+
+    private static SecureRandom random = new SecureRandom();
 
     /** This is a possible value of a base 14 type 1 font */
     public static final String COURIER = "Courier";
@@ -1109,7 +1112,7 @@ public abstract class BaseFont {
     public static String createSubsetPrefix() {
         String s = "";
         for (int k = 0; k < 6; ++k)
-            s += (char)(Math.random() * 26 + 'A');
+            s += (random.nextDouble() * 26 + 'A');
         return s + "+";
     }
     
