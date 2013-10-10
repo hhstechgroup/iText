@@ -50,6 +50,7 @@
 package com.lowagie.text.pdf;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.InputStream;
 import java.util.HashMap;
 import java.util.StringTokenizer;
@@ -63,7 +64,7 @@ public class GlyphList {
     static {
         InputStream is = null;
         try {
-            is = BaseFont.getResourceStream(BaseFont.RESOURCE_PATH + "glyphlist.txt", new FontsResourceAnchor().getClass().getClassLoader());
+            is = BaseFont.getResourceStream(new File(BaseFont.RESOURCE_PATH + "glyphlist.txt"), new FontsResourceAnchor().getClass().getClassLoader());
             if (is == null) {
                 String msg = "glyphlist.txt not found as resource. (It must exist as resource in the package com.lowagie.text.pdf.fonts)";
                 throw new Exception(msg);

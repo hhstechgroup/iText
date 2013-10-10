@@ -42,9 +42,9 @@ public class Rups {
 	 * Main method of this PdfFrame class.
 	 * @param	args	no arguments needed
 	 */
-	public static void main(String[] args) {
-		startApplication();
-	}
+//	public static void main(String[] args) {
+//		startApplication();
+//	}
 	
 	// methods
 	

@@ -187,7 +187,7 @@ public class PdfFileSpecification extends PdfDictionary {
                         in = new URL(filePath).openStream();
                     }
                     else {
-                        in = BaseFont.getResourceStream(filePath);
+                        in = BaseFont.getResourceStream(new File(filePath));
                         if (in == null)
                             throw new IOException(filePath + " not found as file or resource.");
                     }

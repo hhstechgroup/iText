@@ -736,7 +736,7 @@ public class PdfReader implements PdfViewerPreferences {
             MessageDigest md = null;
 
             try {
-                md = MessageDigest.getInstance("SHA-1");
+                md = MessageDigest.getInstance("SHA-256");
                 md.update(envelopedData, 0, 20);
                 for (int i = 0; i<recipients.size(); i++) {
                   byte[] encodedRecipient = recipients.getPdfObject(i).getBytes();

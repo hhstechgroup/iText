@@ -174,7 +174,7 @@ public class PdfPKCS7 {
     private static final HashMap allowedDigests = new HashMap();
     
     static {
-        digestNames.put("1.2.840.113549.2.5", "MD5");
+        digestNames.put("1.2.840.113549.2.5", "SHA-256");
         digestNames.put("1.2.840.113549.2.2", "MD2");
         digestNames.put("1.3.14.3.2.26", "SHA1");
         digestNames.put("2.16.840.1.101.3.4.2.4", "SHA224");
@@ -184,14 +184,14 @@ public class PdfPKCS7 {
         digestNames.put("1.3.36.3.2.2", "RIPEMD128");
         digestNames.put("1.3.36.3.2.1", "RIPEMD160");
         digestNames.put("1.3.36.3.2.3", "RIPEMD256");
-        digestNames.put("1.2.840.113549.1.1.4", "MD5");
+        digestNames.put("1.2.840.113549.1.1.4", "SHA-256");
         digestNames.put("1.2.840.113549.1.1.2", "MD2");
         digestNames.put("1.2.840.113549.1.1.5", "SHA1");
         digestNames.put("1.2.840.113549.1.1.14", "SHA224");
         digestNames.put("1.2.840.113549.1.1.11", "SHA256");
         digestNames.put("1.2.840.113549.1.1.12", "SHA384");
         digestNames.put("1.2.840.113549.1.1.13", "SHA512");
-        digestNames.put("1.2.840.113549.2.5", "MD5");
+        digestNames.put("1.2.840.113549.2.5", "SHA-256");
         digestNames.put("1.2.840.113549.2.2", "MD2");
         digestNames.put("1.2.840.10040.4.3", "SHA1");
         digestNames.put("2.16.840.1.101.3.4.3.1", "SHA224");
@@ -218,7 +218,7 @@ public class PdfPKCS7 {
         algorithmNames.put("1.3.36.3.3.1.2", "RSA");
         algorithmNames.put("1.3.36.3.3.1.4", "RSA");
         
-        allowedDigests.put("MD5", "1.2.840.113549.2.5");
+        allowedDigests.put("SHA-256", "1.2.840.113549.2.5");
         allowedDigests.put("MD2", "1.2.840.113549.2.2");
         allowedDigests.put("SHA1", "1.3.14.3.2.26");
         allowedDigests.put("SHA224", "2.16.840.1.101.3.4.2.4");
@@ -227,7 +227,7 @@ public class PdfPKCS7 {
         allowedDigests.put("SHA512", "2.16.840.1.101.3.4.2.3");
         allowedDigests.put("MD-5", "1.2.840.113549.2.5");
         allowedDigests.put("MD-2", "1.2.840.113549.2.2");
-        allowedDigests.put("SHA-1", "1.3.14.3.2.26");
+        allowedDigests.put("SHA-256", "1.3.14.3.2.26");
         allowedDigests.put("SHA-224", "2.16.840.1.101.3.4.2.4");
         allowedDigests.put("SHA-256", "2.16.840.1.101.3.4.2.1");
         allowedDigests.put("SHA-384", "2.16.840.1.101.3.4.2.2");
@@ -243,7 +243,7 @@ public class PdfPKCS7 {
     /**
      * Gets the digest name for a certain id
      * @param oid	an id (for instance "1.2.840.113549.2.5")
-     * @return	a digest name (for instance "MD5")
+     * @return	a digest name (for instance "SHA-256")
      * @since	2.1.6
      */
     public static String getDigest(String oid) {
@@ -645,7 +645,7 @@ public class PdfPKCS7 {
         if (timeStampToken == null)
             return false;
         MessageImprint imprint = timeStampToken.getTimeStampInfo().toTSTInfo().getMessageImprint();
-        byte[] md = MessageDigest.getInstance("SHA-1").digest(digest);
+        byte[] md = MessageDigest.getInstance("SHA-256").digest(digest);
         byte[] imphashed = imprint.getHashedMessage();
         boolean res = Arrays.equals(md, imphashed);
         return res;
@@ -1232,7 +1232,7 @@ public class PdfPKCS7 {
             // Added by Martin Brunecky, 07/12/2007 folowing Aiken Sam, 2006-11-15
             // Sam found Adobe expects time-stamped SHA1-1 of the encrypted digest
             if (tsaClient != null) {
-                byte[] tsImprint = MessageDigest.getInstance("SHA-1").digest(digest);
+                byte[] tsImprint = MessageDigest.getInstance("SHA-256").digest(digest);
                 byte[] tsToken = tsaClient.getTimeStampToken(this, tsImprint);
                 if (tsToken != null) {
                     ASN1EncodableVector unauthAttributes = buildUnauthenticatedAttributes(tsToken);

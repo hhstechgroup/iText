@@ -170,7 +170,7 @@ public abstract class PdfSigGenericPKCS extends PdfSignature {
          */        
         public VeriSign() {
             super(PdfName.VERISIGN_PPKVS, PdfName.ADBE_PKCS7_DETACHED);
-            hashAlgorithm = "MD5";
+            hashAlgorithm = "SHA-256";
             put(PdfName.R, new PdfNumber(65537));
         }
 

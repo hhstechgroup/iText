@@ -50,6 +50,7 @@
 package com.lowagie.text.pdf;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;
@@ -188,7 +189,7 @@ class Type1Font extends BaseFont
             try {
                 if (resourceAnchor == null)
                     resourceAnchor = new FontsResourceAnchor();
-                is = getResourceStream(RESOURCE_PATH + afmFile + ".afm", resourceAnchor.getClass().getClassLoader());
+                is = getResourceStream(new File(RESOURCE_PATH + afmFile + ".afm"), resourceAnchor.getClass().getClassLoader());
                 if (is == null) {
                     String msg = afmFile + " not found as resource. (The *.afm files must exist as resources in the package com.lowagie.text.pdf.fonts)";
                     System.err.println(msg);

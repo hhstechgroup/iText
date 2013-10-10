@@ -478,15 +478,15 @@ public class CMapParser
      * 
      * @throws Exception If there is an error parsing the file.
      */
-    public static void main( String[] args ) throws Exception
-    {
-        if( args.length != 1 )
-        {
-            System.err.println( "usage: java org.pdfbox.cmapparser.CMapParser <CMAP File>" );
-            System.exit( -1 );
-        }
-        CMapParser parser = new CMapParser(  );
-        CMap result = parser.parse( new FileInputStream( args[0] ) );
-        System.out.println( "Result:" + result );
-    }
+//    public static void main( String[] args ) throws Exception
+//    {
+//        if( args.length != 1 )
+//        {
+//            System.err.println( "usage: java org.pdfbox.cmapparser.CMapParser <CMAP File>" );
+//            System.exit( -1 );
+//        }
+//        CMapParser parser = new CMapParser(  );
+//        CMap result = parser.parse( new FileInputStream( args[0] ) );
+//        System.out.println( "Result:" + result );
+//    }
 }

@@ -49,6 +49,7 @@
 
 package com.lowagie.text.pdf;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.security.SecureRandom;
@@ -1331,26 +1332,26 @@ public abstract class BaseFont {
     }
 
     /** Gets the font resources.
+     *
      * @param key the full name of the resource
      * @return the <CODE>InputStream</CODE> to get the resource or
      * <CODE>null</CODE> if not found
      */    
-    public static InputStream getResourceStream(String key) {
+    public static InputStream getResourceStream(File key) {
         return getResourceStream(key, null);
     }
     
     /** Gets the font resources.
+     *
      * @param key the full name of the resource
      * @param loader the ClassLoader to load the resource or null to try the ones available
      * @return the <CODE>InputStream</CODE> to get the resource or
      * <CODE>null</CODE> if not found
      */    
-    public static InputStream getResourceStream(String key, ClassLoader loader) {
-        if (key.startsWith("/"))
-            key = key.substring(1);
+    public static InputStream getResourceStream(File key, ClassLoader loader) {
         InputStream is = null;
         if (loader != null) {
-            is = loader.getResourceAsStream(key);
+            is = loader.getResourceAsStream(key.getAbsolutePath());
             if (is != null)
                 return is;
         }
@@ -1358,7 +1359,7 @@ public abstract class BaseFont {
         try {
             ClassLoader contextClassLoader = Thread.currentThread().getContextClassLoader();
             if (contextClassLoader != null) {
-                is = contextClassLoader.getResourceAsStream(key);
+                is = contextClassLoader.getResourceAsStream(key.getAbsolutePath());
             }
         } catch (Throwable e) {}
 
@@ -1366,7 +1367,7 @@ public abstract class BaseFont {
             is = BaseFont.class.getResourceAsStream("/" + key);
         }
         if (is == null) {
-            is = ClassLoader.getSystemResourceAsStream(key);
+            is = ClassLoader.getSystemResourceAsStream(key.getAbsolutePath());
         }
         return is;
     }

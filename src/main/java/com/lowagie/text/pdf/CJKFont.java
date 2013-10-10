@@ -49,6 +49,7 @@
 
 package com.lowagie.text.pdf;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Enumeration;
@@ -102,10 +103,10 @@ class CJKFont extends BaseFont {
             if (propertiesLoaded)
                 return;
             try {
-                InputStream is = getResourceStream(RESOURCE_PATH + "cjkfonts.properties");
+                InputStream is = getResourceStream(new File(RESOURCE_PATH + "cjkfonts.properties"));
                 cjkFonts.load(is);
                 is.close();
-                is = getResourceStream(RESOURCE_PATH + "cjkencodings.properties");
+                is = getResourceStream(new File(RESOURCE_PATH + "cjkencodings.properties"));
                 cjkEncodings.load(is);
                 is.close();
             }
@@ -417,7 +418,7 @@ class CJKFont extends BaseFont {
     static char[] readCMap(String name) {
         try {
             name = name + ".cmap";
-            InputStream is = getResourceStream(RESOURCE_PATH + name);
+            InputStream is = getResourceStream(new File(RESOURCE_PATH + name));
             char c[] = new char[0x10000];
             for (int k = 0; k < 0x10000; ++k)
                 c[k] = (char)((is.read() << 8) + is.read());
@@ -583,7 +584,7 @@ class CJKFont extends BaseFont {
     static HashMap readFontProperties(String name) {
         try {
             name += ".properties";
-            InputStream is = getResourceStream(RESOURCE_PATH + name);
+            InputStream is = getResourceStream(new File(RESOURCE_PATH + name));
             Properties p = new Properties();
             p.load(is);
             is.close();

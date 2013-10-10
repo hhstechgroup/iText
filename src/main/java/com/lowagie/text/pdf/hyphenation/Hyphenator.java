@@ -91,9 +91,9 @@ public class Hyphenator {
      */
     public static HyphenationTree getResourceHyphenationTree(String key) {
         try {
-            InputStream stream = BaseFont.getResourceStream(defaultHyphLocation + key + ".xml");
+            InputStream stream = BaseFont.getResourceStream(new File(defaultHyphLocation + key + ".xml"));
             if (stream == null && key.length() > 2)
-                stream = BaseFont.getResourceStream(defaultHyphLocation + key.substring(0, 2) + ".xml");
+                stream = BaseFont.getResourceStream(new File(defaultHyphLocation + key.substring(0, 2) + ".xml"));
             if (stream == null)
                 return null;
             HyphenationTree hTree = new HyphenationTree();

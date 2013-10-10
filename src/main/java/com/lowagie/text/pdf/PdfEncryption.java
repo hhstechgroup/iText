@@ -98,7 +98,7 @@ public class PdfEncryption {
 	/** Work area to prepare the object/generation bytes */
 	byte extra[] = new byte[5];
 
-	/** The message digest algorithm MD5 */
+	/** The message digest algorithm SHA-256 */
 	MessageDigest md5;
 
 	/** The encryption key for the owner */
@@ -135,7 +135,7 @@ public class PdfEncryption {
 
 	public PdfEncryption() {
 		try {
-			md5 = MessageDigest.getInstance("MD5");
+			md5 = MessageDigest.getInstance("SHA-256");
 		} catch (Exception e) {
 			throw new ExceptionConverter(e);
 		}
@@ -332,7 +332,7 @@ public class PdfEncryption {
 	public static byte[] createDocumentId() {
 		MessageDigest md5;
 		try {
-			md5 = MessageDigest.getInstance("MD5");
+			md5 = MessageDigest.getInstance("SHA-256");
 		} catch (Exception e) {
 			throw new ExceptionConverter(e);
 		}
@@ -466,7 +466,7 @@ public class PdfEncryption {
 			byte[] encodedRecipient = null;
 
 			try {
-				md = MessageDigest.getInstance("SHA-1");
+				md = MessageDigest.getInstance("SHA-256");
 				md.update(publicKeyHandler.getSeed());
 				for (int i = 0; i < publicKeyHandler.getRecipientsSize(); i++) {
 					encodedRecipient = publicKeyHandler.getEncodedRecipient(i);
