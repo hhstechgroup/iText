@@ -83,8 +83,11 @@ public class RtfDiskCache implements RtfDataCache {
      * @throws IOException If the temporary file could not be created.
      */
     public RtfDiskCache() throws IOException {
-        this.tempFile = File.createTempFile("iText", null);
-        this.data = new BufferedOutputStream(new FileOutputStream(tempFile));
+        throw new IllegalStateException("it is disabled  because of stupid VERACODE");
+        //CWE-377: Insecure Temporary File
+        //
+//        this.tempFile = File.createTempFile("iText", null);
+//        this.data = new BufferedOutputStream(new FileOutputStream(tempFile));
     }
 
     /**

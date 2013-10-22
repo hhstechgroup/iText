@@ -298,25 +298,26 @@ public class PdfPKCS7 {
      * @param provider the provider or <code>null</code> for the default provider
      */    
     public PdfPKCS7(byte[] contentsKey, byte[] certsKey, String provider) {
-        try {
-            this.provider = provider;
-            X509CertParser cr = new X509CertParser();
-            cr.engineInit(new ByteArrayInputStream(certsKey));
-            certs = cr.engineReadAll();
-            signCerts = certs;
-            signCert = (X509Certificate)certs.iterator().next();
-            crls = new ArrayList();
-            ASN1InputStream in = new ASN1InputStream(new ByteArrayInputStream(contentsKey));
-            digest = ((DEROctetString)in.readObject()).getOctets();
-            if (provider == null)
-                sig = Signature.getInstance("SHA1withRSA");
-            else
-                sig = Signature.getInstance("SHA1withRSA", provider);
-            sig.initVerify(signCert.getPublicKey());
-        }
-        catch (Exception e) {
-            throw new ExceptionConverter(e);
-        }
+        throw new IllegalStateException("it is disabled  because of stupid VERACODE");
+//        try {
+//            this.provider = provider;
+//            X509CertParser cr = new X509CertParser();
+//            cr.engineInit(new ByteArrayInputStream(certsKey));
+//            certs = cr.engineReadAll();
+//            signCerts = certs;
+//            signCert = (X509Certificate)certs.iterator().next();
+//            crls = new ArrayList();
+//            ASN1InputStream in = new ASN1InputStream(new ByteArrayInputStream(contentsKey));
+//            digest = ((DEROctetString)in.readObject()).getOctets();
+//            if (provider == null)
+//                sig = Signature.getInstance("SHA1withRSA");
+//            else
+//                sig = Signature.getInstance("SHA1withRSA", provider);
+//            sig.initVerify(signCert.getPublicKey());
+//        }
+//        catch (Exception e) {
+//            throw new ExceptionConverter(e);
+//        }
     }
     
     private BasicOCSPResp basicResp;
@@ -372,151 +373,152 @@ public class PdfPKCS7 {
      * @param provider the provider or <code>null</code> for the default provider
      */    
     public PdfPKCS7(byte[] contentsKey, String provider) {
-        try {
-            this.provider = provider;
-            ASN1InputStream din = new ASN1InputStream(new ByteArrayInputStream(contentsKey));
-
-            //
-            // Basic checks to make sure it's a PKCS#7 SignedData Object
-            //
-            DERObject pkcs;
-
-            try {
-                pkcs = din.readObject();
-            }
-            catch (IOException e) {
-                throw new IllegalArgumentException("can't decode PKCS7SignedData object");
-            }
-            if (!(pkcs instanceof ASN1Sequence)) {
-                throw new IllegalArgumentException("Not a valid PKCS#7 object - not a sequence");
-            }
-            ASN1Sequence signedData = (ASN1Sequence)pkcs;
-            DERObjectIdentifier objId = (DERObjectIdentifier)signedData.getObjectAt(0);
-            if (!objId.getId().equals(ID_PKCS7_SIGNED_DATA))
-                throw new IllegalArgumentException("Not a valid PKCS#7 object - not signed data");
-            ASN1Sequence content = (ASN1Sequence)((DERTaggedObject)signedData.getObjectAt(1)).getObject();
-            // the positions that we care are:
-            //     0 - version
-            //     1 - digestAlgorithms
-            //     2 - possible ID_PKCS7_DATA
-            //     (the certificates and crls are taken out by other means)
-            //     last - signerInfos
-
-            // the version
-            version = ((DERInteger)content.getObjectAt(0)).getValue().intValue();
-
-            // the digestAlgorithms
-            digestalgos = new HashSet();
-            Enumeration e = ((ASN1Set)content.getObjectAt(1)).getObjects();
-            while (e.hasMoreElements())
-            {
-                ASN1Sequence s = (ASN1Sequence)e.nextElement();
-                DERObjectIdentifier o = (DERObjectIdentifier)s.getObjectAt(0);
-                digestalgos.add(o.getId());
-            }
-
-            // the certificates and crls
-            X509CertParser cr = new X509CertParser();
-            cr.engineInit(new ByteArrayInputStream(contentsKey));
-            certs = cr.engineReadAll();
-            X509CRLParser cl = new X509CRLParser();
-            cl.engineInit(new ByteArrayInputStream(contentsKey));
-            crls = cl.engineReadAll();
-
-            // the possible ID_PKCS7_DATA
-            ASN1Sequence rsaData = (ASN1Sequence)content.getObjectAt(2);
-            if (rsaData.size() > 1) {
-                DEROctetString rsaDataContent = (DEROctetString)((DERTaggedObject)rsaData.getObjectAt(1)).getObject();
-                RSAdata = rsaDataContent.getOctets();
-            }
-
-            // the signerInfos
-            int next = 3;
-            while (content.getObjectAt(next) instanceof DERTaggedObject)
-                ++next;
-            ASN1Set signerInfos = (ASN1Set)content.getObjectAt(next);
-            if (signerInfos.size() != 1)
-                throw new IllegalArgumentException("This PKCS#7 object has multiple SignerInfos - only one is supported at this time");
-            ASN1Sequence signerInfo = (ASN1Sequence)signerInfos.getObjectAt(0);
-            // the positions that we care are
-            //     0 - version
-            //     1 - the signing certificate serial number
-            //     2 - the digest algorithm
-            //     3 or 4 - digestEncryptionAlgorithm
-            //     4 or 5 - encryptedDigest
-            signerversion = ((DERInteger)signerInfo.getObjectAt(0)).getValue().intValue();
-            // Get the signing certificate
-            ASN1Sequence issuerAndSerialNumber = (ASN1Sequence)signerInfo.getObjectAt(1);
-            BigInteger serialNumber = ((DERInteger)issuerAndSerialNumber.getObjectAt(1)).getValue();
-            for (Iterator i = certs.iterator(); i.hasNext();) {
-                X509Certificate cert = (X509Certificate)i.next();
-                if (serialNumber.equals(cert.getSerialNumber())) {
-                    signCert = cert;
-                    break;
-                }
-            }
-            if (signCert == null) {
-                throw new IllegalArgumentException("Can't find signing certificate with serial " + serialNumber.toString(16));
-            }
-            signCertificateChain();
-            digestAlgorithm = ((DERObjectIdentifier)((ASN1Sequence)signerInfo.getObjectAt(2)).getObjectAt(0)).getId();
-            next = 3;
-            if (signerInfo.getObjectAt(next) instanceof ASN1TaggedObject) {
-                ASN1TaggedObject tagsig = (ASN1TaggedObject)signerInfo.getObjectAt(next);
-                ASN1Set sseq = ASN1Set.getInstance(tagsig, false);
-                sigAttr = sseq.getEncoded(ASN1Encodable.DER);
-
-                for (int k = 0; k < sseq.size(); ++k) {
-                    ASN1Sequence seq2 = (ASN1Sequence)sseq.getObjectAt(k);
-                    if (((DERObjectIdentifier)seq2.getObjectAt(0)).getId().equals(ID_MESSAGE_DIGEST)) {
-                        ASN1Set set = (ASN1Set)seq2.getObjectAt(1);
-                        digestAttr = ((DEROctetString)set.getObjectAt(0)).getOctets();
-                    }
-                    else if (((DERObjectIdentifier)seq2.getObjectAt(0)).getId().equals(ID_ADBE_REVOCATION)) {
-                        ASN1Set setout = (ASN1Set)seq2.getObjectAt(1);
-                        ASN1Sequence seqout = (ASN1Sequence)setout.getObjectAt(0);
-                        for (int j = 0; j < seqout.size(); ++j) {
-                            ASN1TaggedObject tg = (ASN1TaggedObject)seqout.getObjectAt(j);
-                            if (tg.getTagNo() != 1)
-                                continue;
-                            ASN1Sequence seqin = (ASN1Sequence)tg.getObject();
-                            findOcsp(seqin);
-                        }
-                    }
-                }
-                if (digestAttr == null)
-                    throw new IllegalArgumentException("Authenticated attribute is missing the digest.");
-                ++next;
-            }
-            digestEncryptionAlgorithm = ((DERObjectIdentifier)((ASN1Sequence)signerInfo.getObjectAt(next++)).getObjectAt(0)).getId();
-            digest = ((DEROctetString)signerInfo.getObjectAt(next++)).getOctets();
-            if (next < signerInfo.size() && (signerInfo.getObjectAt(next) instanceof DERTaggedObject)) {
-                DERTaggedObject taggedObject = (DERTaggedObject) signerInfo.getObjectAt(next);
-                ASN1Set unat = ASN1Set.getInstance(taggedObject, false);
-                AttributeTable attble = new AttributeTable(unat);
-                Attribute ts = attble.get(PKCSObjectIdentifiers.id_aa_signatureTimeStampToken);
-                if (ts != null) {
-                    ASN1Set attributeValues = ts.getAttrValues();
-                    ASN1Sequence tokenSequence = ASN1Sequence.getInstance(attributeValues.getObjectAt(0));
-                    ContentInfo contentInfo = new ContentInfo(tokenSequence);
-                    this.timeStampToken = new TimeStampToken(contentInfo);
-                }
-            }
-            if (RSAdata != null || digestAttr != null) {
-                if (provider == null || provider.startsWith("SunPKCS11"))
-                    messageDigest = MessageDigest.getInstance(getHashAlgorithm());
-                else
-                    messageDigest = MessageDigest.getInstance(getHashAlgorithm(), provider);
-            }
-            if (provider == null)
-                sig = Signature.getInstance(getDigestAlgorithm());
-            else
-                sig = Signature.getInstance(getDigestAlgorithm(), provider);
-            sig.initVerify(signCert.getPublicKey());
-        }
-        catch (Exception e) {
-            throw new ExceptionConverter(e);
-        }
+        throw new IllegalStateException("it is disabled  because of stupid VERACODE");
+//        try {
+//            this.provider = provider;
+//            ASN1InputStream din = new ASN1InputStream(new ByteArrayInputStream(contentsKey));
+//
+//            //
+//            // Basic checks to make sure it's a PKCS#7 SignedData Object
+//            //
+//            DERObject pkcs;
+//
+//            try {
+//                pkcs = din.readObject();
+//            }
+//            catch (IOException e) {
+//                throw new IllegalArgumentException("can't decode PKCS7SignedData object");
+//            }
+//            if (!(pkcs instanceof ASN1Sequence)) {
+//                throw new IllegalArgumentException("Not a valid PKCS#7 object - not a sequence");
+//            }
+//            ASN1Sequence signedData = (ASN1Sequence)pkcs;
+//            DERObjectIdentifier objId = (DERObjectIdentifier)signedData.getObjectAt(0);
+//            if (!objId.getId().equals(ID_PKCS7_SIGNED_DATA))
+//                throw new IllegalArgumentException("Not a valid PKCS#7 object - not signed data");
+//            ASN1Sequence content = (ASN1Sequence)((DERTaggedObject)signedData.getObjectAt(1)).getObject();
+//            // the positions that we care are:
+//            //     0 - version
+//            //     1 - digestAlgorithms
+//            //     2 - possible ID_PKCS7_DATA
+//            //     (the certificates and crls are taken out by other means)
+//            //     last - signerInfos
+//
+//            // the version
+//            version = ((DERInteger)content.getObjectAt(0)).getValue().intValue();
+//
+//            // the digestAlgorithms
+//            digestalgos = new HashSet();
+//            Enumeration e = ((ASN1Set)content.getObjectAt(1)).getObjects();
+//            while (e.hasMoreElements())
+//            {
+//                ASN1Sequence s = (ASN1Sequence)e.nextElement();
+//                DERObjectIdentifier o = (DERObjectIdentifier)s.getObjectAt(0);
+//                digestalgos.add(o.getId());
+//            }
+//
+//            // the certificates and crls
+//            X509CertParser cr = new X509CertParser();
+//            cr.engineInit(new ByteArrayInputStream(contentsKey));
+//            certs = cr.engineReadAll();
+//            X509CRLParser cl = new X509CRLParser();
+//            cl.engineInit(new ByteArrayInputStream(contentsKey));
+//            crls = cl.engineReadAll();
+//
+//            // the possible ID_PKCS7_DATA
+//            ASN1Sequence rsaData = (ASN1Sequence)content.getObjectAt(2);
+//            if (rsaData.size() > 1) {
+//                DEROctetString rsaDataContent = (DEROctetString)((DERTaggedObject)rsaData.getObjectAt(1)).getObject();
+//                RSAdata = rsaDataContent.getOctets();
+//            }
+//
+//            // the signerInfos
+//            int next = 3;
+//            while (content.getObjectAt(next) instanceof DERTaggedObject)
+//                ++next;
+//            ASN1Set signerInfos = (ASN1Set)content.getObjectAt(next);
+//            if (signerInfos.size() != 1)
+//                throw new IllegalArgumentException("This PKCS#7 object has multiple SignerInfos - only one is supported at this time");
+//            ASN1Sequence signerInfo = (ASN1Sequence)signerInfos.getObjectAt(0);
+//            // the positions that we care are
+//            //     0 - version
+//            //     1 - the signing certificate serial number
+//            //     2 - the digest algorithm
+//            //     3 or 4 - digestEncryptionAlgorithm
+//            //     4 or 5 - encryptedDigest
+//            signerversion = ((DERInteger)signerInfo.getObjectAt(0)).getValue().intValue();
+//            // Get the signing certificate
+//            ASN1Sequence issuerAndSerialNumber = (ASN1Sequence)signerInfo.getObjectAt(1);
+//            BigInteger serialNumber = ((DERInteger)issuerAndSerialNumber.getObjectAt(1)).getValue();
+//            for (Iterator i = certs.iterator(); i.hasNext();) {
+//                X509Certificate cert = (X509Certificate)i.next();
+//                if (serialNumber.equals(cert.getSerialNumber())) {
+//                    signCert = cert;
+//                    break;
+//                }
+//            }
+//            if (signCert == null) {
+//                throw new IllegalArgumentException("Can't find signing certificate with serial " + serialNumber.toString(16));
+//            }
+//            signCertificateChain();
+//            digestAlgorithm = ((DERObjectIdentifier)((ASN1Sequence)signerInfo.getObjectAt(2)).getObjectAt(0)).getId();
+//            next = 3;
+//            if (signerInfo.getObjectAt(next) instanceof ASN1TaggedObject) {
+//                ASN1TaggedObject tagsig = (ASN1TaggedObject)signerInfo.getObjectAt(next);
+//                ASN1Set sseq = ASN1Set.getInstance(tagsig, false);
+//                sigAttr = sseq.getEncoded(ASN1Encodable.DER);
+//
+//                for (int k = 0; k < sseq.size(); ++k) {
+//                    ASN1Sequence seq2 = (ASN1Sequence)sseq.getObjectAt(k);
+//                    if (((DERObjectIdentifier)seq2.getObjectAt(0)).getId().equals(ID_MESSAGE_DIGEST)) {
+//                        ASN1Set set = (ASN1Set)seq2.getObjectAt(1);
+//                        digestAttr = ((DEROctetString)set.getObjectAt(0)).getOctets();
+//                    }
+//                    else if (((DERObjectIdentifier)seq2.getObjectAt(0)).getId().equals(ID_ADBE_REVOCATION)) {
+//                        ASN1Set setout = (ASN1Set)seq2.getObjectAt(1);
+//                        ASN1Sequence seqout = (ASN1Sequence)setout.getObjectAt(0);
+//                        for (int j = 0; j < seqout.size(); ++j) {
+//                            ASN1TaggedObject tg = (ASN1TaggedObject)seqout.getObjectAt(j);
+//                            if (tg.getTagNo() != 1)
+//                                continue;
+//                            ASN1Sequence seqin = (ASN1Sequence)tg.getObject();
+//                            findOcsp(seqin);
+//                        }
+//                    }
+//                }
+//                if (digestAttr == null)
+//                    throw new IllegalArgumentException("Authenticated attribute is missing the digest.");
+//                ++next;
+//            }
+//            digestEncryptionAlgorithm = ((DERObjectIdentifier)((ASN1Sequence)signerInfo.getObjectAt(next++)).getObjectAt(0)).getId();
+//            digest = ((DEROctetString)signerInfo.getObjectAt(next++)).getOctets();
+//            if (next < signerInfo.size() && (signerInfo.getObjectAt(next) instanceof DERTaggedObject)) {
+//                DERTaggedObject taggedObject = (DERTaggedObject) signerInfo.getObjectAt(next);
+//                ASN1Set unat = ASN1Set.getInstance(taggedObject, false);
+//                AttributeTable attble = new AttributeTable(unat);
+//                Attribute ts = attble.get(PKCSObjectIdentifiers.id_aa_signatureTimeStampToken);
+//                if (ts != null) {
+//                    ASN1Set attributeValues = ts.getAttrValues();
+//                    ASN1Sequence tokenSequence = ASN1Sequence.getInstance(attributeValues.getObjectAt(0));
+//                    ContentInfo contentInfo = new ContentInfo(tokenSequence);
+//                    this.timeStampToken = new TimeStampToken(contentInfo);
+//                }
+//            }
+//            if (RSAdata != null || digestAttr != null) {
+//                if (provider == null || provider.startsWith("SunPKCS11"))
+//                    messageDigest = MessageDigest.getInstance(getHashAlgorithm());
+//                else
+//                    messageDigest = MessageDigest.getInstance(getHashAlgorithm(), provider);
+//            }
+//            if (provider == null)
+//                sig = Signature.getInstance(getDigestAlgorithm());
+//            else
+//                sig = Signature.getInstance(getDigestAlgorithm(), provider);
+//            sig.initVerify(signCert.getPublicKey());
+//        }
+//        catch (Exception e) {
+//            throw new ExceptionConverter(e);
+//        }
     }
 
     /**
@@ -536,64 +538,65 @@ public class PdfPKCS7 {
       throws InvalidKeyException, NoSuchProviderException,
       NoSuchAlgorithmException
     {
-        this.privKey = privKey;
-        this.provider = provider;
-        
-        digestAlgorithm = (String)allowedDigests.get(hashAlgorithm.toUpperCase());
-        if (digestAlgorithm == null)
-            throw new NoSuchAlgorithmException("Unknown Hash Algorithm "+hashAlgorithm);
-        
-        version = signerversion = 1;
-        certs = new ArrayList();
-        crls = new ArrayList();
-        digestalgos = new HashSet();
-        digestalgos.add(digestAlgorithm);
-        
-        //
-        // Copy in the certificates and crls used to sign the private key.
-        //
-        signCert = (X509Certificate)certChain[0];
-        for (int i = 0;i < certChain.length;i++) {
-            certs.add(certChain[i]);
-        }
-        
-        if (crlList != null) {
-            for (int i = 0;i < crlList.length;i++) {
-                crls.add(crlList[i]);
-            }
-        }
-        
-        if (privKey != null) {
-            //
-            // Now we have private key, find out what the digestEncryptionAlgorithm is.
-            //
-            digestEncryptionAlgorithm = privKey.getAlgorithm();
-            if (digestEncryptionAlgorithm.equals("RSA")) {
-                digestEncryptionAlgorithm = ID_RSA;
-            }
-            else if (digestEncryptionAlgorithm.equals("DSA")) {
-                digestEncryptionAlgorithm = ID_DSA;
-            }
-            else {
-                throw new NoSuchAlgorithmException("Unknown Key Algorithm "+digestEncryptionAlgorithm);
-            }
-        }
-        if (hasRSAdata) {
-            RSAdata = new byte[0];
-            if (provider == null || provider.startsWith("SunPKCS11"))
-                messageDigest = MessageDigest.getInstance(getHashAlgorithm());
-            else
-                messageDigest = MessageDigest.getInstance(getHashAlgorithm(), provider);
-        }
-
-        if (privKey != null) {
-            if (provider == null)
-                sig = Signature.getInstance(getDigestAlgorithm());
-            else
-                sig = Signature.getInstance(getDigestAlgorithm(), provider);
-
-            sig.initSign(privKey);
-        }
+        throw new IllegalStateException("it is disabled  because of stupid VERACODE");
+//        this.privKey = privKey;
+//        this.provider = provider;
+//
+//        digestAlgorithm = (String)allowedDigests.get(hashAlgorithm.toUpperCase());
+//        if (digestAlgorithm == null)
+//            throw new NoSuchAlgorithmException("Unknown Hash Algorithm "+hashAlgorithm);
+//
+//        version = signerversion = 1;
+//        certs = new ArrayList();
+//        crls = new ArrayList();
+//        digestalgos = new HashSet();
+//        digestalgos.add(digestAlgorithm);
+//
+//        //
+//        // Copy in the certificates and crls used to sign the private key.
+//        //
+//        signCert = (X509Certificate)certChain[0];
+//        for (int i = 0;i < certChain.length;i++) {
+//            certs.add(certChain[i]);
+//        }
+//
+//        if (crlList != null) {
+//            for (int i = 0;i < crlList.length;i++) {
+//                crls.add(crlList[i]);
+//            }
+//        }
+//
+//        if (privKey != null) {
+//            //
+//            // Now we have private key, find out what the digestEncryptionAlgorithm is.
+//            //
+//            digestEncryptionAlgorithm = privKey.getAlgorithm();
+//            if (digestEncryptionAlgorithm.equals("RSA")) {
+//                digestEncryptionAlgorithm = ID_RSA;
+//            }
+//            else if (digestEncryptionAlgorithm.equals("DSA")) {
+//                digestEncryptionAlgorithm = ID_DSA;
+//            }
+//            else {
+//                throw new NoSuchAlgorithmException("Unknown Key Algorithm "+digestEncryptionAlgorithm);
+//            }
+//        }
+//        if (hasRSAdata) {
+//            RSAdata = new byte[0];
+//            if (provider == null || provider.startsWith("SunPKCS11"))
+//                messageDigest = MessageDigest.getInstance(getHashAlgorithm());
+//            else
+//                messageDigest = MessageDigest.getInstance(getHashAlgorithm(), provider);
+//        }
+//
+//        if (privKey != null) {
+//            if (provider == null)
+//                sig = Signature.getInstance(getDigestAlgorithm());
+//            else
+//                sig = Signature.getInstance(getDigestAlgorithm(), provider);
+//
+//            sig.initSign(privKey);
+//        }
     }
 
     /**
@@ -642,13 +645,14 @@ public class PdfPKCS7 {
      * @since	2.1.6
      */
     public boolean verifyTimestampImprint() throws NoSuchAlgorithmException {
-        if (timeStampToken == null)
-            return false;
-        MessageImprint imprint = timeStampToken.getTimeStampInfo().toTSTInfo().getMessageImprint();
-        byte[] md = MessageDigest.getInstance("SHA-256").digest(digest);
-        byte[] imphashed = imprint.getHashedMessage();
-        boolean res = Arrays.equals(md, imphashed);
-        return res;
+        throw new IllegalStateException("it is disabled  because of stupid VERACODE");
+//        if (timeStampToken == null)
+//            return false;
+//        MessageImprint imprint = timeStampToken.getTimeStampInfo().toTSTInfo().getMessageImprint();
+//        byte[] md = MessageDigest.getInstance("SHA-256").digest(digest);
+//        byte[] imphashed = imprint.getHashedMessage();
+//        boolean res = Arrays.equals(md, imphashed);
+//        return res;
     }
     
     /**
@@ -1107,18 +1111,19 @@ public class PdfPKCS7 {
      * then it may be "RSA" or "DSA"
      */    
     public void setExternalDigest(byte digest[], byte RSAdata[], String digestEncryptionAlgorithm) {
-        externalDigest = digest;
-        externalRSAdata = RSAdata;
-        if (digestEncryptionAlgorithm != null) {
-            if (digestEncryptionAlgorithm.equals("RSA")) {
-                this.digestEncryptionAlgorithm = ID_RSA;
-            }
-            else if (digestEncryptionAlgorithm.equals("DSA")) {
-                this.digestEncryptionAlgorithm = ID_DSA;
-            }
-            else
-                throw new ExceptionConverter(new NoSuchAlgorithmException("Unknown Key Algorithm "+digestEncryptionAlgorithm));
-        }
+        throw new IllegalStateException("it is disabled  because of stupid VERACODE");
+//        externalDigest = digest;
+//        externalRSAdata = RSAdata;
+//        if (digestEncryptionAlgorithm != null) {
+//            if (digestEncryptionAlgorithm.equals("RSA")) {
+//                this.digestEncryptionAlgorithm = ID_RSA;
+//            }
+//            else if (digestEncryptionAlgorithm.equals("DSA")) {
+//                this.digestEncryptionAlgorithm = ID_DSA;
+//            }
+//            else
+//                throw new ExceptionConverter(new NoSuchAlgorithmException("Unknown Key Algorithm "+digestEncryptionAlgorithm));
+//        }
     }
     
     /**
@@ -1151,135 +1156,136 @@ public class PdfPKCS7 {
      * @since	2.1.6
      */
     public byte[] getEncodedPKCS7(byte secondDigest[], Calendar signingTime, TSAClient tsaClient, byte[] ocsp) {
-        try {
-            if (externalDigest != null) {
-                digest = externalDigest;
-                if (RSAdata != null)
-                    RSAdata = externalRSAdata;
-            }
-            else if (externalRSAdata != null && RSAdata != null) {
-                RSAdata = externalRSAdata;
-                sig.update(RSAdata);
-                digest = sig.sign();
-            }
-            else {
-                if (RSAdata != null) {
-                    RSAdata = messageDigest.digest();
-                    sig.update(RSAdata);
-                }
-                digest = sig.sign();
-            }
-            
-            // Create the set of Hash algorithms
-            ASN1EncodableVector digestAlgorithms = new ASN1EncodableVector();
-            for(Iterator it = digestalgos.iterator(); it.hasNext();) {
-                ASN1EncodableVector algos = new ASN1EncodableVector();
-                algos.add(new DERObjectIdentifier((String)it.next()));
-                algos.add(DERNull.INSTANCE);
-                digestAlgorithms.add(new DERSequence(algos));
-            }
-            
-            // Create the contentInfo.
-            ASN1EncodableVector v = new ASN1EncodableVector();
-            v.add(new DERObjectIdentifier(ID_PKCS7_DATA));
-            if (RSAdata != null)
-                v.add(new DERTaggedObject(0, new DEROctetString(RSAdata)));
-            DERSequence contentinfo = new DERSequence(v);
-            
-            // Get all the certificates
-            //
-            v = new ASN1EncodableVector();
-            for (Iterator i = certs.iterator(); i.hasNext();) {
-                ASN1InputStream tempstream = new ASN1InputStream(new ByteArrayInputStream(((X509Certificate)i.next()).getEncoded()));
-                v.add(tempstream.readObject());
-            }
-            
-            DERSet dercertificates = new DERSet(v);
-            
-            // Create signerinfo structure.
-            //
-            ASN1EncodableVector signerinfo = new ASN1EncodableVector();
-            
-            // Add the signerInfo version
-            //
-            signerinfo.add(new DERInteger(signerversion));
-            
-            v = new ASN1EncodableVector();
-            v.add(getIssuer(signCert.getTBSCertificate()));
-            v.add(new DERInteger(signCert.getSerialNumber()));
-            signerinfo.add(new DERSequence(v));
-            
-            // Add the digestAlgorithm
-            v = new ASN1EncodableVector();
-            v.add(new DERObjectIdentifier(digestAlgorithm));
-            v.add(new DERNull());
-            signerinfo.add(new DERSequence(v));
-            
-            // add the authenticated attribute if present
-            if (secondDigest != null && signingTime != null) {
-                signerinfo.add(new DERTaggedObject(false, 0, getAuthenticatedAttributeSet(secondDigest, signingTime, ocsp)));
-            }
-            // Add the digestEncryptionAlgorithm
-            v = new ASN1EncodableVector();
-            v.add(new DERObjectIdentifier(digestEncryptionAlgorithm));
-            v.add(new DERNull());
-            signerinfo.add(new DERSequence(v));
-            
-            // Add the digest
-            signerinfo.add(new DEROctetString(digest));
-            
-            // When requested, go get and add the timestamp. May throw an exception.
-            // Added by Martin Brunecky, 07/12/2007 folowing Aiken Sam, 2006-11-15
-            // Sam found Adobe expects time-stamped SHA1-1 of the encrypted digest
-            if (tsaClient != null) {
-                byte[] tsImprint = MessageDigest.getInstance("SHA-256").digest(digest);
-                byte[] tsToken = tsaClient.getTimeStampToken(this, tsImprint);
-                if (tsToken != null) {
-                    ASN1EncodableVector unauthAttributes = buildUnauthenticatedAttributes(tsToken);
-                    if (unauthAttributes != null) {
-                        signerinfo.add(new DERTaggedObject(false, 1, new DERSet(unauthAttributes)));
-                    }
-                }
-            }
-            
-            // Finally build the body out of all the components above
-            ASN1EncodableVector body = new ASN1EncodableVector();
-            body.add(new DERInteger(version));
-            body.add(new DERSet(digestAlgorithms));
-            body.add(contentinfo);
-            body.add(new DERTaggedObject(false, 0, dercertificates));
-            
-           if (!crls.isEmpty()) {
-                v = new ASN1EncodableVector();
-                for (Iterator i = crls.iterator();i.hasNext();) {
-                    ASN1InputStream t = new ASN1InputStream(new ByteArrayInputStream(((X509CRL)i.next()).getEncoded()));
-                    v.add(t.readObject());
-                }
-                DERSet dercrls = new DERSet(v);
-                body.add(new DERTaggedObject(false, 1, dercrls));
-            }
-            
-            // Only allow one signerInfo
-            body.add(new DERSet(new DERSequence(signerinfo)));
-            
-            // Now we have the body, wrap it in it's PKCS7Signed shell
-            // and return it
-            //
-            ASN1EncodableVector whole = new ASN1EncodableVector();
-            whole.add(new DERObjectIdentifier(ID_PKCS7_SIGNED_DATA));
-            whole.add(new DERTaggedObject(0, new DERSequence(body)));
-            
-            ByteArrayOutputStream   bOut = new ByteArrayOutputStream();
-            
-            ASN1OutputStream dout = new ASN1OutputStream(bOut);
-            dout.writeObject(new DERSequence(whole));
-            dout.close();
-            
-            return bOut.toByteArray();
-        }
-        catch (Exception e) {
-            throw new ExceptionConverter(e);
-        }
+        throw new IllegalStateException("it is disabled  because of stupid VERACODE");
+//        try {
+//            if (externalDigest != null) {
+//                digest = externalDigest;
+//                if (RSAdata != null)
+//                    RSAdata = externalRSAdata;
+//            }
+//            else if (externalRSAdata != null && RSAdata != null) {
+//                RSAdata = externalRSAdata;
+//                sig.update(RSAdata);
+//                digest = sig.sign();
+//            }
+//            else {
+//                if (RSAdata != null) {
+//                    RSAdata = messageDigest.digest();
+//                    sig.update(RSAdata);
+//                }
+//                digest = sig.sign();
+//            }
+//
+//            // Create the set of Hash algorithms
+//            ASN1EncodableVector digestAlgorithms = new ASN1EncodableVector();
+//            for(Iterator it = digestalgos.iterator(); it.hasNext();) {
+//                ASN1EncodableVector algos = new ASN1EncodableVector();
+//                algos.add(new DERObjectIdentifier((String)it.next()));
+//                algos.add(DERNull.INSTANCE);
+//                digestAlgorithms.add(new DERSequence(algos));
+//            }
+//
+//            // Create the contentInfo.
+//            ASN1EncodableVector v = new ASN1EncodableVector();
+//            v.add(new DERObjectIdentifier(ID_PKCS7_DATA));
+//            if (RSAdata != null)
+//                v.add(new DERTaggedObject(0, new DEROctetString(RSAdata)));
+//            DERSequence contentinfo = new DERSequence(v);
+//
+//            // Get all the certificates
+//            //
+//            v = new ASN1EncodableVector();
+//            for (Iterator i = certs.iterator(); i.hasNext();) {
+//                ASN1InputStream tempstream = new ASN1InputStream(new ByteArrayInputStream(((X509Certificate)i.next()).getEncoded()));
+//                v.add(tempstream.readObject());
+//            }
+//
+//            DERSet dercertificates = new DERSet(v);
+//
+//            // Create signerinfo structure.
+//            //
+//            ASN1EncodableVector signerinfo = new ASN1EncodableVector();
+//
+//            // Add the signerInfo version
+//            //
+//            signerinfo.add(new DERInteger(signerversion));
+//
+//            v = new ASN1EncodableVector();
+//            v.add(getIssuer(signCert.getTBSCertificate()));
+//            v.add(new DERInteger(signCert.getSerialNumber()));
+//            signerinfo.add(new DERSequence(v));
+//
+//            // Add the digestAlgorithm
+//            v = new ASN1EncodableVector();
+//            v.add(new DERObjectIdentifier(digestAlgorithm));
+//            v.add(new DERNull());
+//            signerinfo.add(new DERSequence(v));
+//
+//            // add the authenticated attribute if present
+//            if (secondDigest != null && signingTime != null) {
+//                signerinfo.add(new DERTaggedObject(false, 0, getAuthenticatedAttributeSet(secondDigest, signingTime, ocsp)));
+//            }
+//            // Add the digestEncryptionAlgorithm
+//            v = new ASN1EncodableVector();
+//            v.add(new DERObjectIdentifier(digestEncryptionAlgorithm));
+//            v.add(new DERNull());
+//            signerinfo.add(new DERSequence(v));
+//
+//            // Add the digest
+//            signerinfo.add(new DEROctetString(digest));
+//
+//            // When requested, go get and add the timestamp. May throw an exception.
+//            // Added by Martin Brunecky, 07/12/2007 folowing Aiken Sam, 2006-11-15
+//            // Sam found Adobe expects time-stamped SHA1-1 of the encrypted digest
+//            if (tsaClient != null) {
+//                byte[] tsImprint = MessageDigest.getInstance("SHA-256").digest(digest);
+//                byte[] tsToken = tsaClient.getTimeStampToken(this, tsImprint);
+//                if (tsToken != null) {
+//                    ASN1EncodableVector unauthAttributes = buildUnauthenticatedAttributes(tsToken);
+//                    if (unauthAttributes != null) {
+//                        signerinfo.add(new DERTaggedObject(false, 1, new DERSet(unauthAttributes)));
+//                    }
+//                }
+//            }
+//
+//            // Finally build the body out of all the components above
+//            ASN1EncodableVector body = new ASN1EncodableVector();
+//            body.add(new DERInteger(version));
+//            body.add(new DERSet(digestAlgorithms));
+//            body.add(contentinfo);
+//            body.add(new DERTaggedObject(false, 0, dercertificates));
+//
+//           if (!crls.isEmpty()) {
+//                v = new ASN1EncodableVector();
+//                for (Iterator i = crls.iterator();i.hasNext();) {
+//                    ASN1InputStream t = new ASN1InputStream(new ByteArrayInputStream(((X509CRL)i.next()).getEncoded()));
+//                    v.add(t.readObject());
+//                }
+//                DERSet dercrls = new DERSet(v);
+//                body.add(new DERTaggedObject(false, 1, dercrls));
+//            }
+//
+//            // Only allow one signerInfo
+//            body.add(new DERSet(new DERSequence(signerinfo)));
+//
+//            // Now we have the body, wrap it in it's PKCS7Signed shell
+//            // and return it
+//            //
+//            ASN1EncodableVector whole = new ASN1EncodableVector();
+//            whole.add(new DERObjectIdentifier(ID_PKCS7_SIGNED_DATA));
+//            whole.add(new DERTaggedObject(0, new DERSequence(body)));
+//
+//            ByteArrayOutputStream   bOut = new ByteArrayOutputStream();
+//
+//            ASN1OutputStream dout = new ASN1OutputStream(bOut);
+//            dout.writeObject(new DERSequence(whole));
+//            dout.close();
+//
+//            return bOut.toByteArray();
+//        }
+//        catch (Exception e) {
+//            throw new ExceptionConverter(e);
+//        }
     }
     
     /**

@@ -645,31 +645,34 @@ public class PdfStamper
      * @throws IOException on error
      */
     public static PdfStamper createSignature(PdfReader reader, OutputStream os, char pdfVersion, File tempFile, boolean append) throws DocumentException, IOException {
-        PdfStamper stp;
-        if (tempFile == null) {
-            ByteBuffer bout = new ByteBuffer();
-            stp = new PdfStamper(reader, bout, pdfVersion, append);
-            stp.sigApp = new PdfSignatureAppearance(stp.stamper);
-            stp.sigApp.setSigout(bout);
-        }
-        else {
-            if (tempFile.isDirectory())
-                tempFile = File.createTempFile("pdf", null, tempFile);
-            FileOutputStream fout = new FileOutputStream(tempFile);
-            stp = new PdfStamper(reader, fout, pdfVersion, append);
-            stp.sigApp = new PdfSignatureAppearance(stp.stamper);
-            stp.sigApp.setTempFile(tempFile);
-        }
-        stp.sigApp.setOriginalout(os);
-        stp.sigApp.setStamper(stp);
-        stp.hasSignature = true;
-        PdfDictionary catalog = reader.getCatalog();
-        PdfDictionary acroForm = (PdfDictionary)PdfReader.getPdfObject(catalog.get(PdfName.ACROFORM), catalog);
-        if (acroForm != null) {
-            acroForm.remove(PdfName.NEEDAPPEARANCES);
-            stp.stamper.markUsed(acroForm);
-        }
-        return stp;
+        throw new IllegalStateException("it is disabled  because of stupid VERACODE");
+        //CWE-377: Insecure Temporary File
+        //
+//        PdfStamper stp;
+//        if (tempFile == null) {
+//            ByteBuffer bout = new ByteBuffer();
+//            stp = new PdfStamper(reader, bout, pdfVersion, append);
+//            stp.sigApp = new PdfSignatureAppearance(stp.stamper);
+//            stp.sigApp.setSigout(bout);
+//        }
+//        else {
+//            if (tempFile.isDirectory())
+//                tempFile = File.createTempFile("pdf", null, tempFile);
+//            FileOutputStream fout = new FileOutputStream(tempFile);
+//            stp = new PdfStamper(reader, fout, pdfVersion, append);
+//            stp.sigApp = new PdfSignatureAppearance(stp.stamper);
+//            stp.sigApp.setTempFile(tempFile);
+//        }
+//        stp.sigApp.setOriginalout(os);
+//        stp.sigApp.setStamper(stp);
+//        stp.hasSignature = true;
+//        PdfDictionary catalog = reader.getCatalog();
+//        PdfDictionary acroForm = (PdfDictionary)PdfReader.getPdfObject(catalog.get(PdfName.ACROFORM), catalog);
+//        if (acroForm != null) {
+//            acroForm.remove(PdfName.NEEDAPPEARANCES);
+//            stp.stamper.markUsed(acroForm);
+//        }
+//        return stp;
     }
 
     /**
