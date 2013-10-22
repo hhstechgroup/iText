@@ -51,6 +51,7 @@ package com.lowagie.text.rtf.document;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.security.SecureRandom;
 import java.util.ArrayList;
 
 import com.lowagie.text.DocWriter;
@@ -74,6 +75,9 @@ import com.lowagie.text.rtf.graphic.RtfImage;
  * @since 1.x
  */
 public class RtfDocument extends RtfElement {
+
+    private SecureRandom secureRandom = new SecureRandom();
+
     /**
      * Stores the actual document data
      */
@@ -221,7 +225,7 @@ public class RtfDocument extends RtfElement {
         Integer newInt = null;
         do {
 //        	do {
-        		newInt = new Integer((int) (Math.random() * Integer.MAX_VALUE));
+        		newInt = new Integer((int) (secureRandom.nextDouble() * Integer.MAX_VALUE));
 //        	} while(newInt.intValue() <= -1 && newInt.intValue() >= -5);
         } while(this.previousRandomInts.contains(newInt));
         this.previousRandomInts.add(newInt);
