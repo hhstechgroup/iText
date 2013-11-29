@@ -642,8 +642,18 @@ public final class SimpleBookmark implements SimpleXMLDocHandler {
      */    
     public static void exportToXML(List list, OutputStream out, String encoding, boolean onlyASCII) throws IOException {
         String jenc = IanaEncodings.getJavaEncoding(encoding);
-        Writer wrt = new BufferedWriter(new OutputStreamWriter(out, jenc));
+        Writer wrt=null;
+        try{
+            wrt = new BufferedWriter(new OutputStreamWriter(out, jenc));
         exportToXML(list, wrt, encoding, onlyASCII);
+        }finally {
+            if(wrt!=null){
+                try{
+                    wrt.close();
+                }catch (IOException ex){
+                }
+            }
+        }
     }
     
     /**

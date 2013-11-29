@@ -171,7 +171,7 @@ public class PdfFileSpecification extends PdfDictionary {
         fs.writer = writer;
         fs.put(PdfName.F, new PdfString(fileDisplay));
         fs.setUnicodeFileName(fileDisplay, false);
-        PdfStream stream;
+        PdfEFStream stream;
         InputStream in = null;
         PdfIndirectReference ref;
         PdfIndirectReference refFileLength;
@@ -187,15 +187,15 @@ public class PdfFileSpecification extends PdfDictionary {
                         in = new URL(filePath).openStream();
                     }
                     else {
-                        in = BaseFont.getResourceStream(filePath);
+                        in = BaseFont.getResourceStream(new File(filePath));
                         if (in == null)
                             throw new IOException(filePath + " not found as file or resource.");
                     }
                 }
-                stream = new PdfStream(in, writer);
+                stream = new PdfEFStream(in, writer);
             }
             else
-                stream = new PdfStream(fileStore);
+                stream = new PdfEFStream(fileStore);
             stream.put(PdfName.TYPE, PdfName.EMBEDDEDFILE);
             stream.flateCompress(compressionLevel);
             stream.put(PdfName.PARAMS, refFileLength);

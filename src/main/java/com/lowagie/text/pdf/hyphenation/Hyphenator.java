@@ -91,9 +91,15 @@ public class Hyphenator {
      */
     public static HyphenationTree getResourceHyphenationTree(String key) {
         try {
+<<<<<<< HEAD
             InputStream stream = BaseFont.getResourceStream(defaultHyphLocation + key + ".xml");
             if (stream == null && key.length() > 2)
                 stream = BaseFont.getResourceStream(defaultHyphLocation + key.substring(0, 2) + ".xml");
+=======
+            InputStream stream = BaseFont.getResourceStream(new File(defaultHyphLocation + key + ".xml"));
+            if (stream == null && key.length() > 2)
+                stream = BaseFont.getResourceStream(new File(defaultHyphLocation + key.substring(0, 2) + ".xml"));
+>>>>>>> refs/heads/fixing-veracode
             if (stream == null)
                 return null;
             HyphenationTree hTree = new HyphenationTree();

@@ -1,5 +1,10 @@
 package com.lowagie.text.pdf.codec;
 
+<<<<<<< HEAD
+=======
+import java.io.File;
+
+>>>>>>> refs/heads/fixing-veracode
 /**
  * <p>Encodes and decodes to and from Base64 notation.</p>
  * <p>Homepage: <a href="http://iharder.net/base64">http://iharder.net/base64</a>.</p>
@@ -360,6 +365,7 @@ public class Base64 {
     private Base64(){}
     
     
+<<<<<<< HEAD
     /**
      * Encodes or decodes two files from the command line;
      * <strong>feel free to delete this method (in fact you probably should)
@@ -384,6 +390,32 @@ public class Base64 {
             }   // end else
         }   // end else
     }   // end main
+=======
+//    /**
+//     * Encodes or decodes two files from the command line;
+//     * <strong>feel free to delete this method (in fact you probably should)
+//     * if you're embedding this code into a larger program.</strong>
+//     */
+//    public final static void main( String[] args ) {
+//        if( args.length < 3 ){
+//            usage("Not enough arguments.");
+//        }   // end if: args.length < 3
+//        else {
+//            String flag = args[0];
+//            String infile = args[1];
+//            String outfile = args[2];
+//            if( flag.equals( "-e" ) ){
+//                Base64.encodeFileToFile( infile, outfile );
+//            }   // end if: encode
+//            else if( flag.equals( "-d" ) ) {
+//                Base64.decodeFileToFile( infile, outfile );
+//            }   // end else if: decode
+//            else {
+//                usage( "Unknown flag: " + flag );
+//            }   // end else
+//        }   // end else
+//    }   // end main
+>>>>>>> refs/heads/fixing-veracode
     
     /**
      * Prints command line usage.
@@ -1072,17 +1104,29 @@ public class Base64 {
      * Convenience method for reading a base64-encoded
      * file and decoding it.
      *
+<<<<<<< HEAD
      * @param filename Filename for reading encoded data
+=======
+     *
+     * @param file Filename for reading encoded data
+>>>>>>> refs/heads/fixing-veracode
      * @return decoded byte array or null if unsuccessful
      *
      * @since 2.1
      */
+<<<<<<< HEAD
     public static byte[] decodeFromFile( String filename ) {
         byte[] decodedData = null;
         Base64.InputStream bis = null;
         try {
             // Set up some useful variables
             java.io.File file = new java.io.File( filename );
+=======
+    public static byte[] decodeFromFile( File file) {
+        byte[] decodedData = null;
+        Base64.InputStream bis = null;
+        try {
+>>>>>>> refs/heads/fixing-veracode
             byte[] buffer = null;
             int length   = 0;
             int numBytes = 0;
@@ -1109,7 +1153,11 @@ public class Base64 {
             
         }   // end try
         catch( java.io.IOException e ) {
+<<<<<<< HEAD
             System.err.println( "Error decoding from file " + filename );
+=======
+            System.err.println( "Error decoding from file " + file);
+>>>>>>> refs/heads/fixing-veracode
         }   // end catch: IOException
         finally {
             try{ bis.close(); } catch( Exception e) {}
@@ -1124,17 +1172,29 @@ public class Base64 {
      * Convenience method for reading a binary file
      * and base64-encoding it.
      *
+<<<<<<< HEAD
      * @param filename Filename for reading binary data
+=======
+     *
+     * @param file Filename for reading binary data
+>>>>>>> refs/heads/fixing-veracode
      * @return base64-encoded string or null if unsuccessful
      *
      * @since 2.1
      */
+<<<<<<< HEAD
     public static String encodeFromFile( String filename ) {
+=======
+    public static String encodeFromFile( File file) {
+>>>>>>> refs/heads/fixing-veracode
         String encodedData = null;
         Base64.InputStream bis = null;
         try {
             // Set up some useful variables
+<<<<<<< HEAD
             java.io.File file = new java.io.File( filename );
+=======
+>>>>>>> refs/heads/fixing-veracode
             byte[] buffer = new byte[ Math.max((int)(file.length() * 1.4),40) ]; // Need max() for math on small files (v2.2.1)
             int length   = 0;
             int numBytes = 0;
@@ -1153,7 +1213,11 @@ public class Base64 {
             
         }   // end try
         catch( java.io.IOException e ) {
+<<<<<<< HEAD
             System.err.println( "Error encoding from file " + filename );
+=======
+            System.err.println( "Error encoding from file " + file);
+>>>>>>> refs/heads/fixing-veracode
         }   // end catch: IOException
         finally {
             try{ bis.close(); } catch( Exception e) {}
@@ -1165,11 +1229,19 @@ public class Base64 {
     /**
      * Reads <tt>infile</tt> and encodes it to <tt>outfile</tt>.
      *
+<<<<<<< HEAD
+=======
+     *
+>>>>>>> refs/heads/fixing-veracode
      * @param infile Input file
      * @param outfile Output file
      * @since 2.2
      */
+<<<<<<< HEAD
     public static void encodeFileToFile( String infile, String outfile ) {
+=======
+    public static void encodeFileToFile( File infile, String outfile ) {
+>>>>>>> refs/heads/fixing-veracode
         String encoded = Base64.encodeFromFile( infile );
         java.io.OutputStream out = null;
         try{
@@ -1189,11 +1261,19 @@ public class Base64 {
     /**
      * Reads <tt>infile</tt> and decodes it to <tt>outfile</tt>.
      *
+<<<<<<< HEAD
+=======
+     *
+>>>>>>> refs/heads/fixing-veracode
      * @param infile Input file
      * @param outfile Output file
      * @since 2.2
      */
+<<<<<<< HEAD
     public static void decodeFileToFile( String infile, String outfile ) {
+=======
+    public static void decodeFileToFile( File infile, String outfile ) {
+>>>>>>> refs/heads/fixing-veracode
         byte[] decoded = Base64.decodeFromFile( infile );
         java.io.OutputStream out = null;
         try{

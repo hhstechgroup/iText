@@ -46,11 +46,15 @@
  */
 
 package com.lowagie.text.pdf;
+<<<<<<< HEAD
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
+=======
+import java.io.*;
+>>>>>>> refs/heads/fixing-veracode
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.StringTokenizer;
@@ -428,7 +432,11 @@ public class PdfEncodings {
     
     static void readCmap(String name, ArrayList planes) throws IOException {
         String fullName = BaseFont.RESOURCE_PATH + "cmaps/" + name;
+<<<<<<< HEAD
         InputStream in = BaseFont.getResourceStream(fullName);
+=======
+        InputStream in = BaseFont.getResourceStream(new File(fullName));
+>>>>>>> refs/heads/fixing-veracode
         if (in == null)
             throw new IOException("The Cmap " + name + " was not found.");
         encodeStream(in, planes);

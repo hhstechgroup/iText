@@ -49,6 +49,10 @@
 
 package com.lowagie.text.pdf;
 
+<<<<<<< HEAD
+=======
+import java.io.File;
+>>>>>>> refs/heads/fixing-veracode
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Enumeration;
@@ -65,7 +69,11 @@ import com.lowagie.text.DocumentException;
  * @author  Paulo Soares (psoares@consiste.pt)
  */
 
+<<<<<<< HEAD
 public class CJKFont extends BaseFont {
+=======
+class CJKFont extends BaseFont {
+>>>>>>> refs/heads/fixing-veracode
     /** The encoding used in the PDF document for CJK fonts
      */
     static final String CJK_ENCODING = "UnicodeBigUnmarked";
@@ -102,10 +110,17 @@ public class CJKFont extends BaseFont {
             if (propertiesLoaded)
                 return;
             try {
+<<<<<<< HEAD
                 InputStream is = getResourceStream(RESOURCE_PATH + "cjkfonts.properties");
                 cjkFonts.load(is);
                 is.close();
                 is = getResourceStream(RESOURCE_PATH + "cjkencodings.properties");
+=======
+                InputStream is = getResourceStream(new File(RESOURCE_PATH + "cjkfonts.properties"));
+                cjkFonts.load(is);
+                is.close();
+                is = getResourceStream(new File(RESOURCE_PATH + "cjkencodings.properties"));
+>>>>>>> refs/heads/fixing-veracode
                 cjkEncodings.load(is);
                 is.close();
             }
@@ -417,7 +432,11 @@ public class CJKFont extends BaseFont {
     static char[] readCMap(String name) {
         try {
             name = name + ".cmap";
+<<<<<<< HEAD
             InputStream is = getResourceStream(RESOURCE_PATH + name);
+=======
+            InputStream is = getResourceStream(new File(RESOURCE_PATH + name));
+>>>>>>> refs/heads/fixing-veracode
             char c[] = new char[0x10000];
             for (int k = 0; k < 0x10000; ++k)
                 c[k] = (char)((is.read() << 8) + is.read());
@@ -583,7 +602,11 @@ public class CJKFont extends BaseFont {
     static HashMap readFontProperties(String name) {
         try {
             name += ".properties";
+<<<<<<< HEAD
             InputStream is = getResourceStream(RESOURCE_PATH + name);
+=======
+            InputStream is = getResourceStream(new File(RESOURCE_PATH + name));
+>>>>>>> refs/heads/fixing-veracode
             Properties p = new Properties();
             p.load(is);
             is.close();

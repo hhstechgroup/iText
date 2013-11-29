@@ -194,7 +194,7 @@ public class PdfSmartCopy extends PdfCopy {
         
         ByteStore(PRStream str) throws IOException {
             try {
-                md5 = MessageDigest.getInstance("MD5");
+                md5 = MessageDigest.getInstance("SHA-256");
             }
             catch (Exception e) {
                 throw new ExceptionConverter(e);
