@@ -78,6 +78,9 @@ import com.lowagie.text.exceptions.UnsupportedPdfException;
 import com.lowagie.text.pdf.interfaces.PdfViewerPreferences;
 import com.lowagie.text.pdf.internal.PdfViewerPreferencesImp;
 
+import org.bouncycastle.cms.CMSEnvelopedData;
+import org.bouncycastle.cms.RecipientInformation;
+
 /** Reads a PDF document.
  * @author Paulo Soares (psoares@consiste.pt)
  * @author Kazuya Ujihara
@@ -112,7 +115,8 @@ public class PdfReader implements PdfViewerPreferences {
     protected boolean tampered = false;
     protected int lastXref;
     protected int eofPos;
-    protected char pdfVersion;    
+    protected char pdfVersion;
+    protected PdfEncryption decrypt;
     protected byte password[] = null; //added by ujihara for decryption
     protected Key certificateKey = null; //added by Aiken Sam for certificate decryption
     protected Certificate certificate = null; //added by Aiken Sam for certificate decryption
@@ -268,7 +272,9 @@ public class PdfReader implements PdfViewerPreferences {
         this.eofPos = reader.eofPos;
         this.freeXref = reader.freeXref;
         this.lastXref = reader.lastXref;
-        this.tokens = new PRTokeniser(reader.tokens.getSafeFile());        
+        this.tokens = new PRTokeniser(reader.tokens.getSafeFile());
+        if (reader.decrypt != null)
+            this.decrypt = new PdfEncryption(reader.decrypt);
         this.pValue = reader.pValue;
         this.rValue = reader.rValue;
         this.xrefObj = new ArrayList(reader.xrefObj);
@@ -559,7 +565,226 @@ public class PdfReader implements PdfViewerPreferences {
         return true;
     }
 
-  
+    /**
+     * @throws IOException
+     */
+    private void readDecryptedDocObj() throws IOException {
+        if (encrypted)
+            return;
+        PdfObject encDic = trailer.get(PdfName.ENCRYPT);
+        if (encDic == null || encDic.toString().equals("null"))
+            return;
+        encryptionError = true;
+        byte[] encryptionKey = null;
+        encrypted = true;
+        PdfDictionary enc = (PdfDictionary)getPdfObject(encDic);
+
+        String s;
+        PdfObject o;
+
+        PdfArray documentIDs = trailer.getAsArray(PdfName.ID);
+        byte documentID[] = null;
+        if (documentIDs != null) {
+            o = documentIDs.getPdfObject(0);
+            strings.remove(o);
+            s = o.toString();
+            documentID = com.lowagie.text.DocWriter.getISOBytes(s);
+            if (documentIDs.size() > 1)
+                strings.remove(documentIDs.getPdfObject(1));
+        }
+        // just in case we have a broken producer
+        if (documentID == null)
+            documentID = new byte[0];
+        byte uValue[] = null;
+        byte oValue[] = null;
+        int cryptoMode = PdfWriter.STANDARD_ENCRYPTION_40;
+        int lengthValue = 0;
+
+        PdfObject filter = getPdfObjectRelease(enc.get(PdfName.FILTER));
+
+        if (filter.equals(PdfName.STANDARD)) {
+            s = enc.get(PdfName.U).toString();
+            strings.remove(enc.get(PdfName.U));
+            uValue = com.lowagie.text.DocWriter.getISOBytes(s);
+            s = enc.get(PdfName.O).toString();
+            strings.remove(enc.get(PdfName.O));
+            oValue = com.lowagie.text.DocWriter.getISOBytes(s);
+
+            o = enc.get(PdfName.P);
+            if (!o.isNumber())
+            	throw new InvalidPdfException("Illegal P value.");
+            pValue = ((PdfNumber)o).intValue();
+
+            o = enc.get(PdfName.R);
+            if (!o.isNumber())
+            	throw new InvalidPdfException("Illegal R value.");
+            rValue = ((PdfNumber)o).intValue();
+
+            switch (rValue) {
+            case 2:
+            	cryptoMode = PdfWriter.STANDARD_ENCRYPTION_40;
+            	break;
+            case 3:
+                o = enc.get(PdfName.LENGTH);
+                if (!o.isNumber())
+                    throw new InvalidPdfException("Illegal Length value.");
+                lengthValue = ( (PdfNumber) o).intValue();
+                if (lengthValue > 128 || lengthValue < 40 || lengthValue % 8 != 0)
+                    throw new InvalidPdfException("Illegal Length value.");
+                cryptoMode = PdfWriter.STANDARD_ENCRYPTION_128;
+                break;
+            case 4:
+                PdfDictionary dic = (PdfDictionary)enc.get(PdfName.CF);
+                if (dic == null)
+                    throw new InvalidPdfException("/CF not found (encryption)");
+                dic = (PdfDictionary)dic.get(PdfName.STDCF);
+                if (dic == null)
+                    throw new InvalidPdfException("/StdCF not found (encryption)");
+                if (PdfName.V2.equals(dic.get(PdfName.CFM)))
+                    cryptoMode = PdfWriter.STANDARD_ENCRYPTION_128;
+                else if (PdfName.AESV2.equals(dic.get(PdfName.CFM)))
+                    cryptoMode = PdfWriter.ENCRYPTION_AES_128;
+                else
+                    throw new UnsupportedPdfException("No compatible encryption found");
+                PdfObject em = enc.get(PdfName.ENCRYPTMETADATA);
+                if (em != null && em.toString().equals("false"))
+                    cryptoMode |= PdfWriter.DO_NOT_ENCRYPT_METADATA;
+                break;
+            default:
+            	throw new UnsupportedPdfException("Unknown encryption type R = " + rValue);
+            }
+        }
+        else if (filter.equals(PdfName.PUBSEC)) {
+            boolean foundRecipient = false;
+            byte[] envelopedData = null;
+            PdfArray recipients = null;
+
+            o = enc.get(PdfName.V);
+            if (!o.isNumber())
+            	throw new InvalidPdfException("Illegal V value.");
+            int vValue = ((PdfNumber)o).intValue();
+            switch(vValue) {
+            case 1:
+                cryptoMode = PdfWriter.STANDARD_ENCRYPTION_40;
+                lengthValue = 40;
+                recipients = (PdfArray)enc.get(PdfName.RECIPIENTS);
+            	break;
+            case 2:
+                o = enc.get(PdfName.LENGTH);
+                if (!o.isNumber())
+                    throw new InvalidPdfException("Illegal Length value.");
+                lengthValue = ( (PdfNumber) o).intValue();
+                if (lengthValue > 128 || lengthValue < 40 || lengthValue % 8 != 0)
+                    throw new InvalidPdfException("Illegal Length value.");
+                cryptoMode = PdfWriter.STANDARD_ENCRYPTION_128;
+                recipients = (PdfArray)enc.get(PdfName.RECIPIENTS);
+                break;
+            case 4:
+                PdfDictionary dic = (PdfDictionary)enc.get(PdfName.CF);
+                if (dic == null)
+                    throw new InvalidPdfException("/CF not found (encryption)");
+                dic = (PdfDictionary)dic.get(PdfName.DEFAULTCRYPTFILTER);
+                if (dic == null)
+                    throw new InvalidPdfException("/DefaultCryptFilter not found (encryption)");
+                if (PdfName.V2.equals(dic.get(PdfName.CFM))) {
+                    cryptoMode = PdfWriter.STANDARD_ENCRYPTION_128;
+                    lengthValue = 128;
+                }
+                else if (PdfName.AESV2.equals(dic.get(PdfName.CFM))) {
+                    cryptoMode = PdfWriter.ENCRYPTION_AES_128;
+                    lengthValue = 128;
+                }
+                else
+                    throw new UnsupportedPdfException("No compatible encryption found");
+                PdfObject em = dic.get(PdfName.ENCRYPTMETADATA);
+                if (em != null && em.toString().equals("false"))
+                    cryptoMode |= PdfWriter.DO_NOT_ENCRYPT_METADATA;
+
+                recipients = (PdfArray)dic.get(PdfName.RECIPIENTS);
+                break;
+            default:
+            	throw new UnsupportedPdfException("Unknown encryption type V = " + rValue);
+            }
+            for (int i = 0; i<recipients.size(); i++) {
+                PdfObject recipient = recipients.getPdfObject(i);
+                strings.remove(recipient);
+
+                CMSEnvelopedData data = null;
+                try {
+                    data = new CMSEnvelopedData(recipient.getBytes());
+
+                    Iterator recipientCertificatesIt = data.getRecipientInfos().getRecipients().iterator();
+
+                    while (recipientCertificatesIt.hasNext()) {
+                        RecipientInformation recipientInfo = (RecipientInformation)recipientCertificatesIt.next();
+
+                        if (recipientInfo.getRID().match(certificate) && !foundRecipient) {
+                         envelopedData = recipientInfo.getContent(certificateKey, certificateKeyProvider);
+                         foundRecipient = true;
+                        }
+                    }
+                }
+                catch (Exception f) {
+                    throw new ExceptionConverter(f);
+                }
+            }
+
+            if(!foundRecipient || envelopedData == null) {
+                throw new UnsupportedPdfException("Bad certificate and key.");
+            }
+
+            MessageDigest md = null;
+
+            try {
+                md = MessageDigest.getInstance("SHA-256");
+                md.update(envelopedData, 0, 20);
+                for (int i = 0; i<recipients.size(); i++) {
+                  byte[] encodedRecipient = recipients.getPdfObject(i).getBytes();
+                  md.update(encodedRecipient);
+                }
+                if ((cryptoMode & PdfWriter.DO_NOT_ENCRYPT_METADATA) != 0)
+                    md.update(new byte[]{(byte)255, (byte)255, (byte)255, (byte)255});
+                encryptionKey = md.digest();
+            }
+            catch (Exception f) {
+                throw new ExceptionConverter(f);
+            }
+        }
+
+
+        decrypt = new PdfEncryption();
+        decrypt.setCryptoMode(cryptoMode, lengthValue);
+
+        if (filter.equals(PdfName.STANDARD)) {
+            //check by owner password
+            decrypt.setupByOwnerPassword(documentID, password, uValue, oValue, pValue);
+            if (!equalsArray(uValue, decrypt.userKey, (rValue == 3 || rValue == 4) ? 16 : 32)) {
+                //check by user password
+                decrypt.setupByUserPassword(documentID, password, oValue, pValue);
+                if (!equalsArray(uValue, decrypt.userKey, (rValue == 3 || rValue == 4) ? 16 : 32)) {
+                    throw new BadPasswordException("Bad user password");
+                }
+            }
+            else
+                ownerPasswordUsed = true;
+        }
+        else if (filter.equals(PdfName.PUBSEC)) {
+            decrypt.setupByEncryptionKey(encryptionKey, lengthValue);
+            ownerPasswordUsed = true;
+        }
+
+        for (int k = 0; k < strings.size(); ++k) {
+            PdfString str = (PdfString)strings.get(k);
+            str.decrypt(this);
+        }
+
+        if (encDic.isIndirect()) {
+            cryptoRef = (PRIndirectReference)encDic;
+            xrefObj.set(cryptoRef.getNumber(), null);
+        }
+        encryptionError = false;
+    }
+
     /**
      * @param obj
      * @return a PdfObject
@@ -751,7 +976,7 @@ public class PdfReader implements PdfViewerPreferences {
     protected void readDocObjPartial() throws IOException {
         xrefObj = new ArrayList(xref.length / 2);
         xrefObj.addAll(Collections.nCopies(xref.length / 2, null));
-        
+        readDecryptedDocObj();
         if (objStmToOffset != null) {
             int keys[] = objStmToOffset.getKeys();
             for (int k = 0; k < keys.length; ++k) {
@@ -788,7 +1013,8 @@ public class PdfReader implements PdfViewerPreferences {
         try {
             obj = readPRObject();
             for (int j = 0; j < strings.size(); ++j) {
-                PdfString str = (PdfString)strings.get(j);                
+                PdfString str = (PdfString)strings.get(j);
+                str.decrypt(this);
             }
             if (obj.isStream()) {
                 checkPRStreamLength((PRStream)obj);
@@ -887,7 +1113,7 @@ public class PdfReader implements PdfViewerPreferences {
         for (int k = 0; k < streams.size(); ++k) {
             checkPRStreamLength((PRStream)streams.get(k));
         }
-        
+        readDecryptedDocObj();
         if (objStmMark != null) {
             for (Iterator i = objStmMark.entrySet().iterator(); i.hasNext();) {
                 Map.Entry entry = (Map.Entry)i.next();
@@ -1922,36 +2148,41 @@ public class PdfReader implements PdfViewerPreferences {
      * @throws IOException on error
      * @return the stream content
      */
-	public static byte[] getStreamBytesRaw(PRStream stream, RandomAccessFileOrArray file) throws IOException {
-		PdfReader reader = stream.getReader();
-		byte b[];
-		if (stream.getOffset() < 0)
-			b = stream.getBytes();
-		else {
-			b = new byte[stream.getLength()];
-			file.seek(stream.getOffset());
-			file.readFully(b);
-
-			PdfObject filter = getPdfObjectRelease(stream.get(PdfName.FILTER));
-			ArrayList filters = new ArrayList();
-			if (filter != null) {
-				if (filter.isName())
-					filters.add(filter);
-				else if (filter.isArray())
-					filters = ((PdfArray) filter).getArrayList();
-			}
-			boolean skip = false;
-			for (int k = 0; k < filters.size(); ++k) {
-				PdfObject obj = getPdfObjectRelease((PdfObject) filters.get(k));
-				if (obj != null && obj.toString().equals("/Crypt")) {
-					skip = true;
-					break;
-				}
-			}
-
-		}
-		return b;
-	}
+    public static byte[] getStreamBytesRaw(PRStream stream, RandomAccessFileOrArray file) throws IOException {
+        PdfReader reader = stream.getReader();
+        byte b[];
+        if (stream.getOffset() < 0)
+            b = stream.getBytes();
+        else {
+            b = new byte[stream.getLength()];
+            file.seek(stream.getOffset());
+            file.readFully(b);
+            PdfEncryption decrypt = reader.getDecrypt();
+            if (decrypt != null) {
+                PdfObject filter = getPdfObjectRelease(stream.get(PdfName.FILTER));
+                ArrayList filters = new ArrayList();
+                if (filter != null) {
+                    if (filter.isName())
+                        filters.add(filter);
+                    else if (filter.isArray())
+                        filters = ((PdfArray)filter).getArrayList();
+                }
+                boolean skip = false;
+                for (int k = 0; k < filters.size(); ++k) {
+                    PdfObject obj = getPdfObjectRelease((PdfObject)filters.get(k));
+                    if (obj != null && obj.toString().equals("/Crypt")) {
+                        skip = true;
+                        break;
+                    }
+                }
+                if (!skip) {
+                    decrypt.setHashKey(stream.getObjNum(), stream.getObjGen());
+                    b = decrypt.decryptByteArray(b);
+                }
+            }
+        }
+        return b;
+    }
 
     /** Get the content from a stream as it is without applying any filter.
      * @param stream the stream
@@ -2126,7 +2357,11 @@ public class PdfReader implements PdfViewerPreferences {
     public PdfDictionary getTrailer() {
         return trailer;
     }
-   
+
+    PdfEncryption getDecrypt() {
+        return decrypt;
+    }
+
     static boolean equalsn(byte a1[], byte a2[]) {
         int length = a2.length;
         for (int k = 0; k < length; ++k) {
@@ -3198,6 +3433,38 @@ public class PdfReader implements PdfViewerPreferences {
     }
 
     /**
+     * Gets the certification level for this document. The return values can be <code>PdfSignatureAppearance.NOT_CERTIFIED</code>,
+     * <code>PdfSignatureAppearance.CERTIFIED_NO_CHANGES_ALLOWED</code>,
+     * <code>PdfSignatureAppearance.CERTIFIED_FORM_FILLING</code> and
+     * <code>PdfSignatureAppearance.CERTIFIED_FORM_FILLING_AND_ANNOTATIONS</code>.
+     * <p>
+     * No signature validation is made, use the methods available for that in <CODE>AcroFields</CODE>.
+     * </p>
+     * @return gets the certification level for this document
+     */
+    public int getCertificationLevel() {
+        PdfDictionary dic = catalog.getAsDict(PdfName.PERMS);
+        if (dic == null)
+            return PdfSignatureAppearance.NOT_CERTIFIED;
+        dic = dic.getAsDict(PdfName.DOCMDP);
+        if (dic == null)
+            return PdfSignatureAppearance.NOT_CERTIFIED;
+        PdfArray arr = dic.getAsArray(PdfName.REFERENCE);
+        if (arr == null || arr.size() == 0)
+            return PdfSignatureAppearance.NOT_CERTIFIED;
+        dic = arr.getAsDict(0);
+        if (dic == null)
+            return PdfSignatureAppearance.NOT_CERTIFIED;
+        dic = dic.getAsDict(PdfName.TRANSFORMPARAMS);
+        if (dic == null)
+            return PdfSignatureAppearance.NOT_CERTIFIED;
+        PdfNumber p = dic.getAsNumber(PdfName.P);
+        if (p == null)
+            return PdfSignatureAppearance.NOT_CERTIFIED;
+        return p.intValue();
+    }
+
+    /**
      * Checks if the document was opened with the owner password so that the end application
      * can decide what level of access restrictions to apply. If the document is not encrypted
      * it will return <CODE>true</CODE>.
@@ -3205,10 +3472,25 @@ public class PdfReader implements PdfViewerPreferences {
      * <CODE>false</CODE> if the document was opened with the user password
      */
     public final boolean isOpenedWithFullPermissions() {
-        return true;
+        return !encrypted || ownerPasswordUsed;
+    }
+
+    public int getCryptoMode() {
+    	if (decrypt == null)
+    		return -1;
+    	else
+    		return decrypt.getCryptoMode();
     }
 
     public boolean isMetadataEncrypted() {
-    	return false;
-    }    
+    	if (decrypt == null)
+    		return false;
+    	else
+    		return decrypt.isMetadataEncrypted();
+    }
+
+    public byte[] computeUserPassword() {
+    	if (!encrypted || !ownerPasswordUsed) return null;
+    	return decrypt.computeUserPassword(password);
+    }
 }

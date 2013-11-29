@@ -63,7 +63,7 @@ import com.lowagie.text.Utilities;
  * as Thai.
  * @author  Paulo Soares (psoares@consiste.pt)
  */
-public class TrueTypeFontUnicode extends TrueTypeFont implements Comparator{
+class TrueTypeFontUnicode extends TrueTypeFont implements Comparator{
     
     /**
      * <CODE>true</CODE> if the encoding is vertical.

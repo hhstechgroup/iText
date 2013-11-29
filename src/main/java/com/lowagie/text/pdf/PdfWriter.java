@@ -79,6 +79,7 @@ import com.lowagie.text.pdf.collection.PdfCollection;
 import com.lowagie.text.pdf.events.PdfPageEventForwarder;
 import com.lowagie.text.pdf.interfaces.PdfAnnotations;
 import com.lowagie.text.pdf.interfaces.PdfDocumentActions;
+import com.lowagie.text.pdf.interfaces.PdfEncryptionSettings;
 import com.lowagie.text.pdf.interfaces.PdfPageActions;
 import com.lowagie.text.pdf.interfaces.PdfVersion;
 import com.lowagie.text.pdf.interfaces.PdfViewerPreferences;
@@ -97,7 +98,8 @@ import com.lowagie.text.xml.xmp.XmpWriter;
  */
 
 public class PdfWriter extends DocWriter implements
-	PdfViewerPreferences,	
+	PdfViewerPreferences,
+	PdfEncryptionSettings,
 	PdfVersion,
 	PdfDocumentActions,
 	PdfPageActions,
@@ -288,8 +290,11 @@ public class PdfWriter extends DocWriter implements
                 numObj = 0;
             }
             int p = streamObjects.size();
-            int idx = numObj++;            
-            obj.toPdf(writer, streamObjects);            
+            int idx = numObj++;
+            PdfEncryption enc = writer.crypto;
+            writer.crypto = null;
+            obj.toPdf(writer, streamObjects);
+            writer.crypto = enc;
             streamObjects.append(' ');
             index.append(nObj).append(' ').append(p).append(' ');
             return new PdfWriter.PdfBody.PdfCrossReference(2, nObj, currentObjNum, idx);
@@ -488,8 +493,11 @@ public class PdfWriter extends DocWriter implements
                 xr.put(PdfName.INDEX, idx);
                 if (prevxref > 0)
                     xr.put(PdfName.PREV, new PdfNumber(prevxref));
+                PdfEncryption enc = writer.crypto;
+                writer.crypto = null;
                 PdfIndirectObject indirect = new PdfIndirectObject(refNumber, xr, writer);
-                indirect.writeTo(writer.getOs());                
+                indirect.writeTo(writer.getOs());
+                writer.crypto = enc;
             }
             else {
                 os.write(getISOBytes("xref\n"));
@@ -1170,7 +1178,12 @@ public class PdfWriter extends DocWriter implements
                 if (xmpMetadata != null) {
                 	PdfStream xmp = new PdfStream(xmpMetadata);
                 	xmp.put(PdfName.TYPE, PdfName.METADATA);
-                	xmp.put(PdfName.SUBTYPE, PdfName.XML);                    
+                	xmp.put(PdfName.SUBTYPE, PdfName.XML);
+                    if (crypto != null && !crypto.isMetadataEncrypted()) {
+                        PdfArray ar = new PdfArray();
+                        ar.add(PdfName.CRYPT);
+                        xmp.put(PdfName.FILTER, ar);
+                    }
                 	catalog.put(PdfName.METADATA, body.add(xmp).getIndirectReference());
                 }
                 // [C10] make pdfx conformant
@@ -1194,8 +1207,14 @@ public class PdfWriter extends DocWriter implements
                 PdfIndirectReference encryption = null;
                 PdfObject fileID = null;
                 body.flushObjStm();
-                
-                
+                if (crypto != null) {
+                    PdfIndirectObject encryptionObject = addToBody(crypto.getEncryptionDictionary(), false);
+                    encryption = encryptionObject.getIndirectReference();
+                    fileID = crypto.getFileID();
+                }
+                else
+                    fileID = PdfEncryption.createInfoId(PdfEncryption.createDocumentId());
+
                 // write the cross-reference table of the body
                 body.writeCrossReferenceTable(os, indirectCatalog.getIndirectReference(),
                     infoObj.getIndirectReference(), encryption,  fileID, prevxref);
@@ -1711,7 +1730,9 @@ public class PdfWriter extends DocWriter implements
         if (pdfxConformance.getPDFXConformance() == pdfx)
             return;
         if (pdf.isOpen())
-            throw new PdfXConformanceException("PDFX conformance can only be set before opening the document.");        
+            throw new PdfXConformanceException("PDFX conformance can only be set before opening the document.");
+        if (crypto != null)
+            throw new PdfXConformanceException("A PDFX conforming document cannot be encrypted.");
         if (pdfx == PDFA1A || pdfx == PDFA1B)
             setPdfVersion(VERSION_1_4);
         else if (pdfx != PDFXNONE)
@@ -1926,14 +1947,52 @@ public class PdfWriter extends DocWriter implements
     /** @deprecated As of iText 2.0.7, use {@link #STANDARD_ENCRYPTION_128} instead. Scheduled for removal at or after 2.2.0 */
     public static final boolean STRENGTH128BITS = true;
 
-    
+    /** Contains the business logic for cryptography. */
+    protected PdfEncryption crypto;
+    PdfEncryption getEncryption() {
+        return crypto;
+    }
+
     /** @see com.lowagie.text.pdf.interfaces.PdfEncryptionSettings#setEncryption(byte[], byte[], int, int) */
     public void setEncryption(byte userPassword[], byte ownerPassword[], int permissions, int encryptionType) throws DocumentException {
         if (pdf.isOpen())
             throw new DocumentException("Encryption can only be added before opening the document.");
-        
+        crypto = new PdfEncryption();
+        crypto.setCryptoMode(encryptionType, 0);
+        crypto.setupAllKeys(userPassword, ownerPassword, permissions);
     }
 
+    /** @see com.lowagie.text.pdf.interfaces.PdfEncryptionSettings#setEncryption(java.security.cert.Certificate[], int[], int) */
+    public void setEncryption(Certificate[] certs, int[] permissions, int encryptionType) throws DocumentException {
+        if (pdf.isOpen())
+            throw new DocumentException("Encryption can only be added before opening the document.");
+        crypto = new PdfEncryption();
+        if (certs != null) {
+            for (int i=0; i < certs.length; i++) {
+                crypto.addRecipient(certs[i], permissions[i]);
+            }
+        }
+        crypto.setCryptoMode(encryptionType, 0);
+        crypto.getEncryptionDictionary();
+    }
+
+    /**
+     * Sets the encryption options for this document. The userPassword and the
+     *  ownerPassword can be null or have zero length. In this case the ownerPassword
+     *  is replaced by a random string. The open permissions for the document can be
+     *  AllowPrinting, AllowModifyContents, AllowCopy, AllowModifyAnnotations,
+     *  AllowFillIn, AllowScreenReaders, AllowAssembly and AllowDegradedPrinting.
+     *  The permissions can be combined by ORing them.
+     * @param userPassword the user password. Can be null or empty
+     * @param ownerPassword the owner password. Can be null or empty
+     * @param permissions the user permissions
+     * @param strength128Bits <code>true</code> for 128 bit key length, <code>false</code> for 40 bit key length
+     * @throws DocumentException if the document is already open
+     * @deprecated As of iText 2.0.3, replaced by (@link #setEncryption(byte[], byte[], int, int)}. Scheduled for removal at or after 2.2.0
+     */
+    public void setEncryption(byte userPassword[], byte ownerPassword[], int permissions, boolean strength128Bits) throws DocumentException {
+        setEncryption(userPassword, ownerPassword, permissions, strength128Bits ? STANDARD_ENCRYPTION_128 : STANDARD_ENCRYPTION_40);
+    }
 
     /**
      * Sets the encryption options for this document. The userPassword and the

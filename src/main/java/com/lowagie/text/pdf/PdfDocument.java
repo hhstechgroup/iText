@@ -909,7 +909,17 @@ public class PdfDocument extends Document {
             if (xmpMetadata != null) {
             	PdfStream xmp = new PdfStream(xmpMetadata);
             	xmp.put(PdfName.TYPE, PdfName.METADATA);
+<<<<<<< HEAD
             	xmp.put(PdfName.SUBTYPE, PdfName.XML);            	
+=======
+            	xmp.put(PdfName.SUBTYPE, PdfName.XML);
+            	PdfEncryption crypto = writer.getEncryption();
+                if (crypto != null && !crypto.isMetadataEncrypted()) {
+                    PdfArray ar = new PdfArray();
+                    ar.add(PdfName.CRYPT);
+                    xmp.put(PdfName.FILTER, ar);
+                }
+>>>>>>> refs/heads/fixing-veracode
             	page.put(PdfName.METADATA, writer.addToBody(xmp).getIndirectReference());
             }
 

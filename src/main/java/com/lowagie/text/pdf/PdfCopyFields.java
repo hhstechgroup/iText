@@ -53,6 +53,10 @@ import java.util.List;
 
 import com.lowagie.text.DocWriter;
 import com.lowagie.text.DocumentException;
+<<<<<<< HEAD
+=======
+import com.lowagie.text.pdf.interfaces.PdfEncryptionSettings;
+>>>>>>> refs/heads/fixing-veracode
 import com.lowagie.text.pdf.interfaces.PdfViewerPreferences;
 
 /**
@@ -62,7 +66,11 @@ import com.lowagie.text.pdf.interfaces.PdfViewerPreferences;
  * @author  Paulo Soares (psoares@consiste.pt)
  */
 public class PdfCopyFields
+<<<<<<< HEAD
 	implements PdfViewerPreferences {
+=======
+	implements PdfViewerPreferences, PdfEncryptionSettings {
+>>>>>>> refs/heads/fixing-veracode
     
     private PdfCopyFieldsImp fc;
     
@@ -207,7 +215,18 @@ public class PdfCopyFields
     public void setFullCompression() {
         fc.setFullCompression();
     }
+<<<<<<< HEAD
 	
+=======
+
+	/**
+	 * @see com.lowagie.text.pdf.interfaces.PdfEncryptionSettings#setEncryption(byte[], byte[], int, int)
+	 */
+	public void setEncryption(byte[] userPassword, byte[] ownerPassword, int permissions, int encryptionType) throws DocumentException {
+		fc.setEncryption(userPassword, ownerPassword, permissions, encryptionType);
+	}
+
+>>>>>>> refs/heads/fixing-veracode
 	/**
 	 * @see com.lowagie.text.pdf.interfaces.PdfViewerPreferences#addViewerPreference(com.lowagie.text.pdf.PdfName, com.lowagie.text.pdf.PdfObject)
 	 */
@@ -220,5 +239,15 @@ public class PdfCopyFields
 	 */
 	public void setViewerPreferences(int preferences) {
 		fc.setViewerPreferences(preferences);
+<<<<<<< HEAD
+=======
+	}
+
+	/**
+	 * @see com.lowagie.text.pdf.interfaces.PdfEncryptionSettings#setEncryption(java.security.cert.Certificate[], int[], int)
+	 */
+	public void setEncryption(Certificate[] certs, int[] permissions, int encryptionType) throws DocumentException {
+		fc.setEncryption(certs, permissions, encryptionType);
+>>>>>>> refs/heads/fixing-veracode
 	}    
 }

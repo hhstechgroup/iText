@@ -279,14 +279,14 @@ public class SimplePatternParser implements SimpleXMLDocHandler,
 		System.out.println("pattern: " + p + " : " + v);
 	}
 
-	public static void main(String[] args) throws Exception {
-		try {
-			if (args.length > 0) {
-				SimplePatternParser pp = new SimplePatternParser();
-				pp.parse(new FileInputStream(args[0]), pp);
-			}
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
+//	public static void main(String[] args) throws Exception {
+//		try {
+//			if (args.length > 0) {
+//				SimplePatternParser pp = new SimplePatternParser();
+//				pp.parse(new FileInputStream(args[0]), pp);
+//			}
+//		} catch (Exception e) {
+//			e.printStackTrace();
+//		}
+//	}
 }

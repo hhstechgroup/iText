@@ -175,18 +175,18 @@ public final class Pfm2afm {
         p.out.flush();
     }
     
-    public static void main(String[] args) {
-        try {
-            RandomAccessFileOrArray in = new RandomAccessFileOrArray(args[0]);
-            OutputStream out = new FileOutputStream(args[1]);
-            convert(in, out);
-            in.close();
-            out.close();
-        }
-        catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
+//    public static void main(String[] args) {
+//        try {
+//            RandomAccessFileOrArray in = new RandomAccessFileOrArray(args[0]);
+//            OutputStream out = new FileOutputStream(args[1]);
+//            convert(in, out);
+//            in.close();
+//            out.close();
+//        }
+//        catch (Exception e) {
+//            e.printStackTrace();
+//        }
+//    }
     
     private String readString(int n) throws IOException {
         byte b[] = new byte[n];

@@ -49,8 +49,15 @@
 
 package com.lowagie.text.pdf;
 
+<<<<<<< HEAD
 import java.io.IOException;
 import java.io.InputStream;
+=======
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.security.SecureRandom;
+>>>>>>> refs/heads/fixing-veracode
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -65,7 +72,13 @@ import com.lowagie.text.DocumentException;
  */
 
 public abstract class BaseFont {
+<<<<<<< HEAD
     
+=======
+
+    private static SecureRandom random = new SecureRandom();
+
+>>>>>>> refs/heads/fixing-veracode
     /** This is a possible value of a base 14 type 1 font */
     public static final String COURIER = "Courier";
     
@@ -1109,7 +1122,11 @@ public abstract class BaseFont {
     public static String createSubsetPrefix() {
         String s = "";
         for (int k = 0; k < 6; ++k)
+<<<<<<< HEAD
             s += (char)(Math.random() * 26 + 'A');
+=======
+            s += (random.nextDouble() * 26 + 'A');
+>>>>>>> refs/heads/fixing-veracode
         return s + "+";
     }
     
@@ -1328,26 +1345,45 @@ public abstract class BaseFont {
     }
 
     /** Gets the font resources.
+<<<<<<< HEAD
+=======
+     *
+>>>>>>> refs/heads/fixing-veracode
      * @param key the full name of the resource
      * @return the <CODE>InputStream</CODE> to get the resource or
      * <CODE>null</CODE> if not found
      */    
+<<<<<<< HEAD
     public static InputStream getResourceStream(String key) {
+=======
+    public static InputStream getResourceStream(File key) {
+>>>>>>> refs/heads/fixing-veracode
         return getResourceStream(key, null);
     }
     
     /** Gets the font resources.
+<<<<<<< HEAD
+=======
+     *
+>>>>>>> refs/heads/fixing-veracode
      * @param key the full name of the resource
      * @param loader the ClassLoader to load the resource or null to try the ones available
      * @return the <CODE>InputStream</CODE> to get the resource or
      * <CODE>null</CODE> if not found
      */    
+<<<<<<< HEAD
     public static InputStream getResourceStream(String key, ClassLoader loader) {
         if (key.startsWith("/"))
             key = key.substring(1);
         InputStream is = null;
         if (loader != null) {
             is = loader.getResourceAsStream(key);
+=======
+    public static InputStream getResourceStream(File key, ClassLoader loader) {
+        InputStream is = null;
+        if (loader != null) {
+            is = loader.getResourceAsStream(key.getAbsolutePath());
+>>>>>>> refs/heads/fixing-veracode
             if (is != null)
                 return is;
         }
@@ -1355,7 +1391,11 @@ public abstract class BaseFont {
         try {
             ClassLoader contextClassLoader = Thread.currentThread().getContextClassLoader();
             if (contextClassLoader != null) {
+<<<<<<< HEAD
                 is = contextClassLoader.getResourceAsStream(key);
+=======
+                is = contextClassLoader.getResourceAsStream(key.getAbsolutePath());
+>>>>>>> refs/heads/fixing-veracode
             }
         } catch (Throwable e) {}
 
@@ -1363,7 +1403,11 @@ public abstract class BaseFont {
             is = BaseFont.class.getResourceAsStream("/" + key);
         }
         if (is == null) {
+<<<<<<< HEAD
             is = ClassLoader.getSystemResourceAsStream(key);
+=======
+            is = ClassLoader.getSystemResourceAsStream(key.getAbsolutePath());
+>>>>>>> refs/heads/fixing-veracode
         }
         return is;
     }

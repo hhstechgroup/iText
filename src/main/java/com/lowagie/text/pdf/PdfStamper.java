@@ -62,6 +62,7 @@ import com.lowagie.text.ExceptionConverter;
 import com.lowagie.text.Image;
 import com.lowagie.text.Rectangle;
 import com.lowagie.text.pdf.collection.PdfCollection;
+import com.lowagie.text.pdf.interfaces.PdfEncryptionSettings;
 import com.lowagie.text.pdf.interfaces.PdfViewerPreferences;
 import java.security.cert.Certificate;
 
@@ -75,14 +76,15 @@ import java.security.cert.Certificate;
  * @author Paulo Soares (psoares@consiste.pt)
  */
 public class PdfStamper
-	implements PdfViewerPreferences {
+	implements PdfViewerPreferences, PdfEncryptionSettings {
     /**
      * The writer
      */    
     protected PdfStamperImp stamper;
     private HashMap moreInfo;
     private boolean hasSignature;
-    
+    private PdfSignatureAppearance sigApp;
+
     /** Starts the process of adding extra content to an existing PDF
      * document.
      * @param reader the original document. It cannot be reused
@@ -167,6 +169,13 @@ public class PdfStamper
         stamper.insertPage(pageNumber, mediabox);
     }
     
+    /**
+     * Gets the signing instance. The appearances and other parameters can the be set.
+     * @return the signing instance
+     */    
+    public PdfSignatureAppearance getSignatureAppearance() {
+        return sigApp;
+    }
 
     /**
      * Closes the document. No more content can be written after the
@@ -182,16 +191,29 @@ public class PdfStamper
             stamper.close(moreInfo);
             return;
         }
-        
-        
-        
+        sigApp.preClose();
+        PdfSigGenericPKCS sig = sigApp.getSigStandard();
+        PdfLiteral lit = (PdfLiteral)sig.get(PdfName.CONTENTS);
+        int totalBuf = (lit.getPosLength() - 2) / 2;
         byte buf[] = new byte[8192];
-                
+        int n;
+        InputStream inp = sigApp.getRangeStream();
+        try {
+            while ((n = inp.read(buf)) > 0) {
+                sig.getSigner().update(buf, 0, n);
+            }
+        }
+        catch (SignatureException se) {
+            throw new ExceptionConverter(se);
+        }
+        buf = new byte[totalBuf];
+        byte[] bsig = sig.getSignerContents();
+        System.arraycopy(bsig, 0, buf, 0, bsig.length);
         PdfString str = new PdfString(buf);
         str.setHexWriting(true);
         PdfDictionary dic = new PdfDictionary();
         dic.put(PdfName.CONTENTS, str);
-        
+        sigApp.close(dic);
         stamper.reader.close();
     }
 
@@ -325,7 +347,8 @@ public class PdfStamper
         if (stamper.isAppend())
             throw new DocumentException("Append mode does not support changing the encryption status.");
         if (stamper.isContentWritten())
-            throw new DocumentException("Content was already written to the output.");        
+            throw new DocumentException("Content was already written to the output.");
+        stamper.setEncryption(certs, permissions, encryptionType);
      }
      
     /** Gets a page from other PDF document. Note that calling this method more than
@@ -622,25 +645,34 @@ public class PdfStamper
      * @throws IOException on error
      */
     public static PdfStamper createSignature(PdfReader reader, OutputStream os, char pdfVersion, File tempFile, boolean append) throws DocumentException, IOException {
-        PdfStamper stp;
-        if (tempFile == null) {
-            ByteBuffer bout = new ByteBuffer();
-            stp = new PdfStamper(reader, bout, pdfVersion, append);            
-        }
-        else {
-            if (tempFile.isDirectory())
-                tempFile = File.createTempFile("pdf", null, tempFile);
-            FileOutputStream fout = new FileOutputStream(tempFile);
-            stp = new PdfStamper(reader, fout, pdfVersion, append);            
-        }
-        stp.hasSignature = true;
-        PdfDictionary catalog = reader.getCatalog();
-        PdfDictionary acroForm = (PdfDictionary)PdfReader.getPdfObject(catalog.get(PdfName.ACROFORM), catalog);
-        if (acroForm != null) {
-            acroForm.remove(PdfName.NEEDAPPEARANCES);
-            stp.stamper.markUsed(acroForm);
-        }
-        return stp;
+        throw new IllegalStateException("it is disabled  because of stupid VERACODE");
+        //CWE-377: Insecure Temporary File
+        //
+//        PdfStamper stp;
+//        if (tempFile == null) {
+//            ByteBuffer bout = new ByteBuffer();
+//            stp = new PdfStamper(reader, bout, pdfVersion, append);
+//            stp.sigApp = new PdfSignatureAppearance(stp.stamper);
+//            stp.sigApp.setSigout(bout);
+//        }
+//        else {
+//            if (tempFile.isDirectory())
+//                tempFile = File.createTempFile("pdf", null, tempFile);
+//            FileOutputStream fout = new FileOutputStream(tempFile);
+//            stp = new PdfStamper(reader, fout, pdfVersion, append);
+//            stp.sigApp = new PdfSignatureAppearance(stp.stamper);
+//            stp.sigApp.setTempFile(tempFile);
+//        }
+//        stp.sigApp.setOriginalout(os);
+//        stp.sigApp.setStamper(stp);
+//        stp.hasSignature = true;
+//        PdfDictionary catalog = reader.getCatalog();
+//        PdfDictionary acroForm = (PdfDictionary)PdfReader.getPdfObject(catalog.get(PdfName.ACROFORM), catalog);
+//        if (acroForm != null) {
+//            acroForm.remove(PdfName.NEEDAPPEARANCES);
+//            stp.stamper.markUsed(acroForm);
+//        }
+//        return stp;
     }
 
     /**

@@ -114,7 +114,13 @@ public class PdfIndirectObject {
         this.writer = writer;
         this.number = number;
         this.generation = generation;
-        this.object = object;                            
+        this.object = object;
+        PdfEncryption crypto = null;
+        if (writer != null)
+            crypto = writer.getEncryption();
+        if (crypto != null) {
+            crypto.setHashKey(number, generation);
+        }
     }
     
     // methods

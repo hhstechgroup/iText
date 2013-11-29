@@ -284,47 +284,84 @@ public class PdfStream extends PdfDictionary {
     /**
      * @see com.lowagie.text.pdf.PdfDictionary#toPdf(com.lowagie.text.pdf.PdfWriter, java.io.OutputStream)
      */
-	public void toPdf(PdfWriter writer, OutputStream os) throws IOException {
-		if (inputStream != null && compressed)
-			put(PdfName.FILTER, PdfName.FLATEDECODE);
-
-		PdfObject nn = get(PdfName.LENGTH);
-		superToPdf(writer, os);
-		os.write(STARTSTREAM);
-		if (inputStream != null) {
-			rawLength = 0;
-			DeflaterOutputStream def = null;
-			OutputStreamCounter osc = new OutputStreamCounter(os);			
-			OutputStream fout = osc;
-			Deflater deflater = null;
-			if (compressed) {
-				deflater = new Deflater(compressionLevel);
-				fout = def = new DeflaterOutputStream(fout, deflater, 0x8000);
-			}
-
-			byte buf[] = new byte[4192];
-			while (true) {
-				int n = inputStream.read(buf);
-				if (n <= 0)
-					break;
-				fout.write(buf, 0, n);
-				rawLength += n;
-			}
-			if (def != null) {
-				def.finish();
-				deflater.end();
-			}			
-			inputStreamLength = osc.getCounter();
-		} else {
-
-			if (streamBytes != null)
-				streamBytes.writeTo(os);
-			else
-				os.write(bytes);
-
-		}
-		os.write(ENDSTREAM);
-	}
+    public void toPdf(PdfWriter writer, OutputStream os) throws IOException {
+        if (inputStream != null && compressed)
+            put(PdfName.FILTER, PdfName.FLATEDECODE);
+        PdfEncryption crypto = null;
+        if (writer != null)
+            crypto = writer.getEncryption();
+        if (crypto != null) {
+            PdfObject filter = get(PdfName.FILTER);
+            if (filter != null) {
+                if (PdfName.CRYPT.equals(filter))
+                    crypto = null;
+                else if (filter.isArray()) {
+                    PdfArray a = (PdfArray)filter;
+                    if (!a.isEmpty() && PdfName.CRYPT.equals(a.getPdfObject(0)))
+                        crypto = null;
+                }
+            }
+        }
+        PdfObject nn = get(PdfName.LENGTH);
+        if (crypto != null && nn != null && nn.isNumber()) {
+            int sz = ((PdfNumber)nn).intValue();
+            put(PdfName.LENGTH, new PdfNumber(crypto.calculateStreamSize(sz)));
+            superToPdf(writer, os);
+            put(PdfName.LENGTH, nn);
+        }
+        else
+            superToPdf(writer, os);
+        os.write(STARTSTREAM);
+        if (inputStream != null) {
+            rawLength = 0;
+            DeflaterOutputStream def = null;
+            OutputStreamCounter osc = new OutputStreamCounter(os);
+            OutputStreamEncryption ose = null;
+            OutputStream fout = osc;
+            if (crypto != null && !crypto.isEmbeddedFilesOnly())
+                fout = ose = crypto.getEncryptionStream(fout);
+            Deflater deflater = null;
+            if (compressed) {
+                deflater = new Deflater(compressionLevel);
+                fout = def = new DeflaterOutputStream(fout, deflater, 0x8000);
+            }
+            
+            byte buf[] = new byte[4192];
+            while (true) {
+                int n = inputStream.read(buf);
+                if (n <= 0)
+                    break;
+                fout.write(buf, 0, n);
+                rawLength += n;
+            }
+            if (def != null) {
+                def.finish();
+                deflater.end();
+            }
+            if (ose != null)
+                ose.finish();
+            inputStreamLength = osc.getCounter();
+        }
+        else {
+            if (crypto != null && !crypto.isEmbeddedFilesOnly()) {
+                byte b[];
+                if (streamBytes != null) {
+                    b = crypto.encryptByteArray(streamBytes.toByteArray());
+                }
+                else {
+                    b = crypto.encryptByteArray(bytes);
+                }
+                os.write(b);
+            }
+            else {
+                if (streamBytes != null)
+                    streamBytes.writeTo(os);
+                else
+                    os.write(bytes);
+            }
+        }
+        os.write(ENDSTREAM);
+    }
     
     /**
      * Writes the data content to an <CODE>OutputStream</CODE>.
